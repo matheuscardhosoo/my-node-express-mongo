@@ -1,11 +1,11 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
-export interface IBook extends Document {
+export interface IBookDocument extends Document {
     title: string;
     description?: string;
 }
 
-const bookSchema = new Schema<IBook>({
+const bookSchema = new Schema<IBookDocument>({
     title: {
         type: String,
         required: true,
@@ -16,6 +16,6 @@ const bookSchema = new Schema<IBook>({
     },
 }, {versionKey: false});
 
-const Book = mongoose.model<IBook>("Book", bookSchema);
+const BookModel = mongoose.model<IBookDocument>("Book", bookSchema);
 
-export default Book;
+export default BookModel;
