@@ -1,10 +1,9 @@
-import { ICreateBook, IReadBook, IUpdateBook, IBookRepository } from '../../domain/book';
+import { ICreateBook, IReadBook, IUpdateBook, IBookRepository } from '../../domain/dependency_inversion/book';
 import BookModel, { IBookDocument } from '../models/book';
 
 export class BookRepository implements IBookRepository {
     async create(data: ICreateBook): Promise<IReadBook> {
-        const document: IBookDocument = new BookModel(data);
-        const newBook = await document.save();
+        const newBook: IBookDocument = await BookModel.create(data);
         return {
             id: newBook._id,
             title: newBook.title,

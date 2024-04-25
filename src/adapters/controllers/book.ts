@@ -1,14 +1,21 @@
 import { IController } from "./interfaces";
-import { IRequest, IResponse, INextFunction, IApiAdapter } from "../dependency_inversion/api";
-import { IReadBook } from "../../domain/book";
+import { IRequest, IResponse, INextFunction, IRouter } from "../dependency_inversion/api";
+import { IReadBook } from "../../domain/dependency_inversion/book";
 import { BookRepository, BookRepositoryFactory } from "../repositories/book";
 
 
 export class BookController implements IController {
     private bookRepositoryFactory: BookRepositoryFactory;
 
-    constructor(bookRepositoryFactory: BookRepositoryFactory) {
+    constructor(router: IRouter, bookRepositoryFactory: BookRepositoryFactory) {
         this.bookRepositoryFactory = bookRepositoryFactory;
+
+        router.get('/books', this.list.bind(this));
+        router.post('/books', this.create.bind(this));
+        router.get('/books/:id', this.read.bind(this));
+        router.put('/books/:id', this.replace.bind(this));
+        router.patch('/books/:id', this.update.bind(this));
+        router.delete('/books/:id', this.delete.bind(this));
     }
 
     public async list(req: IRequest, res: IResponse, next: INextFunction): Promise<void> {
