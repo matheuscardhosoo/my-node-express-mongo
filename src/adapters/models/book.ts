@@ -1,5 +1,13 @@
 import mongoose, { Document, Schema } from 'mongoose';
-import { IBookPriceObject, IReadBook } from '../../domain/dependency_inversion/book';
+import { IBookPriceObject } from '../../domain/dependency_inversion/book';
+
+export interface IBookDocument extends Document {
+    title: string;
+    description?: string;
+    price?: IBookPriceObject;
+    numberOfPages?: number;
+    authors?: string[];
+}
 
 const bookPriceSchema = new Schema<IBookPriceObject>({
     value: {
@@ -13,7 +21,7 @@ const bookPriceSchema = new Schema<IBookPriceObject>({
     }
 }, {versionKey: false, _id: false});
 
-export const bookSchema = new Schema<IReadBook>({
+export const bookSchema = new Schema<IBookDocument>({
     title: {
         type: String,
         required: true,
@@ -30,8 +38,13 @@ export const bookSchema = new Schema<IReadBook>({
         type: Number,
         required: false,
     },
+    authors: {
+        type: [Schema.Types.ObjectId],
+        ref: "Author",
+        required: false,
+    }
 }, {versionKey: false});
 
-const BookModel = mongoose.model<IReadBook>("Book", bookSchema);
+const BookModel = mongoose.model<IBookDocument>("Book", bookSchema);
 
 export default BookModel;

@@ -1,28 +1,28 @@
 import { IController } from "./interfaces";
 import { IRequest, IResponse, INextFunction, IRouter } from "../dependency_inversion/api";
-import { IReadBook } from "../../domain/dependency_inversion/book";
-import { BookRepository, BookRepositoryFactory } from "../repositories/book";
+import { IReadAuthor } from "../../domain/dependency_inversion/author";
+import { AuthorRepository, AuthorRepositoryFactory } from "../repositories/author";
 
 
-class BookController implements IController {
-    private bookRepositoryFactory: BookRepositoryFactory;
+class AuthorController implements IController {
+    private authorRepositoryFactory: AuthorRepositoryFactory;
 
-    constructor(router: IRouter, bookRepositoryFactory: BookRepositoryFactory) {
-        this.bookRepositoryFactory = bookRepositoryFactory;
+    constructor(router: IRouter, authorRepositoryFactory: AuthorRepositoryFactory) {
+        this.authorRepositoryFactory = authorRepositoryFactory;
 
-        router.get('/books', this.list.bind(this));
-        router.post('/books', this.create.bind(this));
-        router.get('/books/:id', this.read.bind(this));
-        router.put('/books/:id', this.replace.bind(this));
-        router.patch('/books/:id', this.update.bind(this));
-        router.delete('/books/:id', this.delete.bind(this));
+        router.get('/authors', this.list.bind(this));
+        router.post('/authors', this.create.bind(this));
+        router.get('/authors/:id', this.read.bind(this));
+        router.put('/authors/:id', this.replace.bind(this));
+        router.patch('/authors/:id', this.update.bind(this));
+        router.delete('/authors/:id', this.delete.bind(this));
     }
 
     public async list(req: IRequest, res: IResponse, next: INextFunction): Promise<void> {
-        const bookRepository: BookRepository = this.bookRepositoryFactory.getInstance();
+        const authorRepository: AuthorRepository = this.authorRepositoryFactory.getInstance();
         try {
-            const books: IReadBook[] = await bookRepository.findAll();
-            res.status(200).json(books);
+            const authors: IReadAuthor[] = await authorRepository.findAll();
+            res.status(200).json(authors);
         } catch (error: unknown) {
             console.log('Unexpected error:', error);
             res.status(500).json({ message: 'Unexpected error' });
@@ -32,10 +32,10 @@ class BookController implements IController {
     }
 
     public async create(req: IRequest, res: IResponse, next: INextFunction): Promise<void> {
-        const bookRepository: BookRepository = this.bookRepositoryFactory.getInstance();
+        const authorRepository: AuthorRepository = this.authorRepositoryFactory.getInstance();
         try {
-            const newBook: IReadBook = await bookRepository.create(req.body);
-            res.status(201).json(newBook);
+            const newAuthor: IReadAuthor = await authorRepository.create(req.body);
+            res.status(201).json(newAuthor);
         } catch (error: unknown) {
             console.log('Unexpected error:', error);
             res.status(500).json({ message: 'Unexpected error' });
@@ -45,14 +45,14 @@ class BookController implements IController {
     }
 
     public async read(req: IRequest, res: IResponse, next: INextFunction): Promise<void> {
-        const bookRepository: BookRepository = this.bookRepositoryFactory.getInstance();
+        const authorRepository: AuthorRepository = this.authorRepositoryFactory.getInstance();
         const id: string = req.params.id;
         try {
-            const book: IReadBook | null = await bookRepository.findById(id);
-            if (book) {
-                res.status(200).json(book);
+            const author: IReadAuthor | null = await authorRepository.findById(id);
+            if (author) {
+                res.status(200).json(author);
             } else {
-                res.status(404).json({ message: 'Book not found' });
+                res.status(404).json({ message: 'Author not found' });
             }
         } catch (error: unknown) {
             console.log('Unexpected error:', error);
@@ -63,11 +63,11 @@ class BookController implements IController {
     }
 
     public async replace(req: IRequest, res: IResponse, next: INextFunction): Promise<void> {
-        const bookRepository: BookRepository = this.bookRepositoryFactory.getInstance();
+        const authorRepository: AuthorRepository = this.authorRepositoryFactory.getInstance();
         const id: string = req.params.id;
         try {
-            const book: IReadBook | null = await bookRepository.replace(id, req.body);
-            res.status(200).json(book);
+            const updatedAuthor: IReadAuthor = await authorRepository.replace(id, req.body);
+            res.status(200).json(updatedAuthor);
         } catch (error: unknown) {
             console.log('Unexpected error:', error);
             res.status(500).json({ message: 'Unexpected error' });
@@ -77,14 +77,14 @@ class BookController implements IController {
     }
 
     public async update(req: IRequest, res: IResponse, next: INextFunction): Promise<void> {
-        const bookRepository: BookRepository = this.bookRepositoryFactory.getInstance();
+        const authorRepository: AuthorRepository = this.authorRepositoryFactory.getInstance();
         const id: string = req.params.id;
         try {
-            const book: IReadBook | null = await bookRepository.update(id, req.body);
-            if (book) {
-                res.status(200).json(book);
+            const updatedAuthor: IReadAuthor | null = await authorRepository.update(id, req.body);
+            if (updatedAuthor) {
+                res.status(200).json(updatedAuthor);
             } else {
-                res.status(404).json({ message: 'Book not found' });
+                res.status(404).json({ message: 'Author not found' });
             }
         } catch (error: unknown) {
             console.log('Unexpected error:', error);
@@ -95,10 +95,10 @@ class BookController implements IController {
     }
 
     public async delete(req: IRequest, res: IResponse, next: INextFunction): Promise<void> {
-        const bookRepository: BookRepository = this.bookRepositoryFactory.getInstance();
+        const authorRepository: AuthorRepository = this.authorRepositoryFactory.getInstance();
         const id: string = req.params.id;
         try {
-            await bookRepository.delete(id);
+            await authorRepository.delete(id);
             res.status(204).send();
         } catch (error: unknown) {
             console.log('Unexpected error:', error);
@@ -109,4 +109,4 @@ class BookController implements IController {
     }
 }
 
-export default BookController;
+export default AuthorController;
