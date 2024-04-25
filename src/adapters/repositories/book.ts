@@ -1,39 +1,21 @@
 import { ICreateBook, IReadBook, IUpdateBook, IBookRepository } from '../../domain/dependency_inversion/book';
-import BookModel, { IBookDocument } from '../models/book';
+import BookModel from '../models/book';
 
 export class BookRepository implements IBookRepository {
     async create(data: ICreateBook): Promise<IReadBook> {
-        const newBook: IBookDocument = await BookModel.create(data);
-        return {
-            id: newBook._id,
-            title: newBook.title,
-            description: newBook.description,
-        };
+        return await BookModel.create(data);
     }
 
     async findAll(): Promise<IReadBook[]> {
-        const documents: IBookDocument[] = await BookModel.find({});
-        return documents.map((document: IBookDocument) => ({
-            id: document._id,
-            title: document.title,
-            description: document.description,
-        }));
+        return await BookModel.find({});
     }
 
     async findById(id: string): Promise<IReadBook | null> {
-        const document: IBookDocument | null = await BookModel.findById(id);
-        if (!document) {
-            return null;
-        }
-        return {
-            id: document._id,
-            title: document.title,
-            description: document.description,
-        };
+        return await BookModel.findById(id);
     }
 
     async replace(id: string, data: ICreateBook): Promise<IReadBook | null> {
-        const oldBook: IBookDocument | null = await BookModel.findOneAndReplace({ _id: id }, data);
+        const oldBook: IReadBook | null = await BookModel.findOneAndReplace({ _id: id }, data);
         if (!oldBook) {
             return await this.create(data);
         }
@@ -41,7 +23,7 @@ export class BookRepository implements IBookRepository {
     }
 
     async update(id: string, data: IUpdateBook): Promise<IReadBook | null> {
-        const oldBook: IBookDocument | null = await BookModel.findByIdAndUpdate(id, data);
+        const oldBook: IReadBook | null = await BookModel.findByIdAndUpdate(id, data);
         if (!oldBook) {
             return null;
         }

@@ -1,15 +1,20 @@
+export interface IBookPriceObject {
+    value: number;
+    currency: string;
+}
+
 export interface ICreateBook {
     title: string;
     description?: string;
+    price?: IBookPriceObject;
+    numberOfPages?: number;
 }
 
 export interface IReadBook extends ICreateBook {
-    id: string;
+    _id: string;
 }
 
-export interface IUpdateBook {
-    description?: string;
-}
+export interface IUpdateBook extends ICreateBook{}
 
 export interface IBookRepository {
     create: (data: ICreateBook) => Promise<IReadBook>;
