@@ -1,8 +1,14 @@
-import { startSession } from 'mongoose';
-
-import { IAuthorBookObject, ICreateAuthor, IReadAuthor, IUpdateAuthor, IAuthorRepository } from '../../domain/dependency_inversion/author';
 import AuthorModel, { IAuthorDocument } from '../models/author';
 import BookModel, { IBookDocument } from '../models/book';
+import {
+    IAuthorBookObject,
+    IAuthorRepository,
+    ICreateAuthor,
+    IReadAuthor,
+    IUpdateAuthor,
+} from '../../domain/dependency_inversion/author';
+
+import { startSession } from 'mongoose';
 
 export class AuthorRepository implements IAuthorRepository {
     async create(data: ICreateAuthor): Promise<IReadAuthor> {
@@ -18,7 +24,7 @@ export class AuthorRepository implements IAuthorRepository {
             await session.abortTransaction();
             throw error;
         } finally {
-            session.endSession();
+            await session.endSession();
         }
     }
 
@@ -38,9 +44,11 @@ export class AuthorRepository implements IAuthorRepository {
         try {
             const authorBooks: IAuthorBookObject[] = await this.validateAuthorBooks(data.books);
             const oldDocument: IAuthorDocument | null = await AuthorModel.findById(id, { _id: 0, books: 1 });
-            const updatedDocument: IAuthorDocument = await AuthorModel.findOneAndReplace(
-                { _id: id }, data, { new: true, upsert: true, setDefaultsOnInsert: true }
-            );
+            const updatedDocument: IAuthorDocument = await AuthorModel.findOneAndReplace({ _id: id }, data, {
+                new: true,
+                upsert: true,
+                setDefaultsOnInsert: true,
+            });
             await this.updateAuthorBooks(id, updatedDocument.books, oldDocument?.books);
             await session.commitTransaction();
             return this.documentToAuthor(updatedDocument, authorBooks);
@@ -48,7 +56,7 @@ export class AuthorRepository implements IAuthorRepository {
             await session.abortTransaction();
             throw error;
         } finally {
-            session.endSession();
+            await session.endSession();
         }
     }
 
@@ -58,9 +66,11 @@ export class AuthorRepository implements IAuthorRepository {
         try {
             const authorBooks: IAuthorBookObject[] = await this.validateAuthorBooks(data.books);
             const oldDocument: IAuthorDocument | null = await AuthorModel.findById(id, { _id: 0, books: 1 });
-            const updatedDocument: IAuthorDocument | null = await AuthorModel.findByIdAndUpdate(
-                id, data, { new: true, upsert: false, setDefaultsOnInsert: false }
-            );
+            const updatedDocument: IAuthorDocument | null = await AuthorModel.findByIdAndUpdate(id, data, {
+                new: true,
+                upsert: false,
+                setDefaultsOnInsert: false,
+            });
             if (!updatedDocument) {
                 return null;
             }
@@ -71,7 +81,7 @@ export class AuthorRepository implements IAuthorRepository {
             await session.abortTransaction();
             throw error;
         } finally {
-            session.endSession();
+            await session.endSession();
         }
     }
 
@@ -90,7 +100,7 @@ export class AuthorRepository implements IAuthorRepository {
             await session.abortTransaction();
             throw error;
         } finally {
-            session.endSession();
+            await session.endSession();
         }
     }
 
@@ -113,8 +123,8 @@ export class AuthorRepository implements IAuthorRepository {
         return authorBooks;
     }
 
-    private async addAuthorToBooks(authorId: string, newBooksIds?: string[]): Promise<void> {
-        if (!newBooksIds) {
+    private async addAuthorToBooks(authorId?: string, newBooksIds?: string[]): Promise<void> {
+        if (!authorId || !newBooksIds) {
             return;
         }
         await BookModel.updateMany({ _id: { $in: newBooksIds } }, { $push: { authors: authorId } });
@@ -134,15 +144,17 @@ export class AuthorRepository implements IAuthorRepository {
 
     private documentToAuthor(document: IAuthorDocument, cachedBooks?: IAuthorBookObject[]): IReadAuthor {
         const booksDocuments: IBookDocument[] = document.books as unknown as IBookDocument[];
-        const books: IAuthorBookObject[] = cachedBooks || booksDocuments.map((bookDocument: IBookDocument) => ({
-            id: bookDocument._id,
-            title: bookDocument.title,
-        }));
+        const books: IAuthorBookObject[] =
+            cachedBooks ||
+            booksDocuments.map((bookDocument: IBookDocument) => ({
+                id: bookDocument._id,
+                title: bookDocument.title,
+            }));
         return {
             id: document._id,
             name: document.name,
             birthDate: document.birthDate,
-            books: books 
+            books: books,
         };
     }
 }

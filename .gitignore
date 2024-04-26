@@ -16,3 +16,6 @@ node_modules/
 
 # TypeScript transpiled output
 dist/
+
+# VScode settings
+.vscode/

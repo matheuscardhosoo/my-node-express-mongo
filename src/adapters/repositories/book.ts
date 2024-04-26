@@ -1,7 +1,14 @@
-import { startSession } from 'mongoose';
-import { ICreateBook, IReadBook, IUpdateBook, IBookRepository, IBookAuthorObject } from '../../domain/dependency_inversion/book';
 import AuthorModel, { IAuthorDocument } from '../models/author';
 import BookModel, { IBookDocument } from '../models/book';
+import {
+    IBookAuthorObject,
+    IBookRepository,
+    ICreateBook,
+    IReadBook,
+    IUpdateBook,
+} from '../../domain/dependency_inversion/book';
+
+import { startSession } from 'mongoose';
 
 export class BookRepository implements IBookRepository {
     async create(data: ICreateBook): Promise<IReadBook> {
@@ -12,12 +19,12 @@ export class BookRepository implements IBookRepository {
             const document: IBookDocument = await BookModel.create(data);
             await this.addBookToAuthors(document._id, document.authors);
             await session.commitTransaction();
-            return this.documentToBook(document, bookAuthors)
+            return this.documentToBook(document, bookAuthors);
         } catch (error) {
             await session.abortTransaction();
             throw error;
         } finally {
-            session.endSession();
+            await session.endSession();
         }
     }
 
@@ -36,18 +43,23 @@ export class BookRepository implements IBookRepository {
         session.startTransaction();
         try {
             const bookAuthors: IBookAuthorObject[] = await this.validateBookAuthors(data.authors);
-            const oldDocument: IBookDocument | null = await BookModel.findById(id, { _id: 0, authors: 1 });
-            const updatedDocument: IBookDocument = await BookModel.findOneAndReplace(
-                { _id: id }, data, { new: true, upsert: true, setDefaultsOnInsert: true }
-            );
+            const oldDocument: IBookDocument | null = await BookModel.findById(id, {
+                _id: 0,
+                authors: 1,
+            });
+            const updatedDocument: IBookDocument = await BookModel.findOneAndReplace({ _id: id }, data, {
+                new: true,
+                upsert: true,
+                setDefaultsOnInsert: true,
+            });
             await this.updateBookAuthors(id, updatedDocument.authors, oldDocument?.authors);
             await session.commitTransaction();
-            return this.documentToBook(updatedDocument, bookAuthors)
+            return this.documentToBook(updatedDocument, bookAuthors);
         } catch (error) {
             await session.abortTransaction();
             throw error;
         } finally {
-            session.endSession();
+            await session.endSession();
         }
     }
 
@@ -56,10 +68,15 @@ export class BookRepository implements IBookRepository {
         session.startTransaction();
         try {
             const bookAuthors: IBookAuthorObject[] = await this.validateBookAuthors(data.authors);
-            const oldDocument: IBookDocument | null = await BookModel.findById(id, { _id: 0, authors: 1 });
-            const updatedDocument: IBookDocument | null = await BookModel.findByIdAndUpdate(
-                id, data, { new: true, upsert: false, setDefaultsOnInsert: false }
-            );
+            const oldDocument: IBookDocument | null = await BookModel.findById(id, {
+                _id: 0,
+                authors: 1,
+            });
+            const updatedDocument: IBookDocument | null = await BookModel.findByIdAndUpdate(id, data, {
+                new: true,
+                upsert: false,
+                setDefaultsOnInsert: false,
+            });
             if (!updatedDocument) {
                 return null;
             }
@@ -70,7 +87,7 @@ export class BookRepository implements IBookRepository {
             await session.abortTransaction();
             throw error;
         } finally {
-            session.endSession();
+            await session.endSession();
         }
     }
 
@@ -78,7 +95,10 @@ export class BookRepository implements IBookRepository {
         const session = await startSession();
         session.startTransaction();
         try {
-            const oldDocument: IBookDocument | null = await BookModel.findById(id, { _id: 0, authors: 1 });
+            const oldDocument: IBookDocument | null = await BookModel.findById(id, {
+                _id: 0,
+                authors: 1,
+            });
             if (!oldDocument) {
                 return;
             }
@@ -89,7 +109,7 @@ export class BookRepository implements IBookRepository {
             await session.abortTransaction();
             throw error;
         } finally {
-            session.endSession();
+            await session.endSession();
         }
     }
 
@@ -115,8 +135,8 @@ export class BookRepository implements IBookRepository {
         return bookAuthors;
     }
 
-    private async addBookToAuthors(bookId: string, newAuthorsIds?: string[]): Promise<void> {
-        if (!newAuthorsIds) {
+    private async addBookToAuthors(bookId?: string, newAuthorsIds?: string[]): Promise<void> {
+        if (!bookId || !newAuthorsIds) {
             return;
         }
         await AuthorModel.updateMany({ _id: { $in: newAuthorsIds } }, { $push: { books: bookId } });
@@ -136,10 +156,12 @@ export class BookRepository implements IBookRepository {
 
     private documentToBook(document: IBookDocument, cachedAuthors?: IBookAuthorObject[]): IReadBook {
         const authorsDocuments: IAuthorDocument[] = document.authors as unknown as IAuthorDocument[];
-        const authors: IBookAuthorObject[] = cachedAuthors || authorsDocuments.map((author: IAuthorDocument) => ({
-            id: author._id,
-            name: author.name,
-        }));
+        const authors: IBookAuthorObject[] =
+            cachedAuthors ||
+            authorsDocuments.map((author: IAuthorDocument) => ({
+                id: author._id,
+                name: author.name,
+            }));
         return {
             id: document._id,
             title: document.title,

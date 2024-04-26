@@ -4,7 +4,7 @@ export interface IBookPriceObject {
 }
 
 export interface IBookAuthorObject {
-    id: string;
+    id?: string;
     name: string;
 }
 
@@ -15,13 +15,18 @@ interface IBookBase {
     numberOfPages?: number;
 }
 
-export interface ICreateBook extends IBookBase{
+export interface IBook extends IBookBase {
+    id?: string;
     authors?: string[];
 }
 
 export interface IReadBook extends IBookBase {
-    id: string;
+    id?: string;
     authors?: IBookAuthorObject[];
+}
+
+export interface ICreateBook extends IBookBase {
+    authors?: string[];
 }
 
 export interface IUpdateBook extends IBookBase {

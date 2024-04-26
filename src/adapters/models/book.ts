@@ -1,7 +1,7 @@
+import { IBook, IBookPriceObject } from '../../domain/dependency_inversion/book';
 import mongoose, { Document, Schema } from 'mongoose';
-import { IBookPriceObject } from '../../domain/dependency_inversion/book';
 
-export interface IBookDocument extends Document {
+export interface IBookDocument extends Document<string, unknown, IBook> {
     title: string;
     description?: string;
     price?: IBookPriceObject;
@@ -9,42 +9,48 @@ export interface IBookDocument extends Document {
     authors?: string[];
 }
 
-const bookPriceSchema = new Schema<IBookPriceObject>({
-    value: {
-        type: Number,
-        required: true,
+const bookPriceSchema = new Schema<IBookPriceObject>(
+    {
+        value: {
+            type: Number,
+            required: true,
+        },
+        currency: {
+            type: String,
+            required: true,
+            default: 'BRL',
+        },
     },
-    currency: {
-        type: String,
-        required: true,
-        default: "BRL",
-    }
-}, {versionKey: false, _id: false});
+    { versionKey: false, _id: false },
+);
 
-export const bookSchema = new Schema<IBookDocument>({
-    title: {
-        type: String,
-        required: true,
+export const bookSchema = new Schema<IBookDocument>(
+    {
+        title: {
+            type: String,
+            required: true,
+        },
+        description: {
+            type: String,
+            required: false,
+        },
+        price: {
+            type: bookPriceSchema,
+            required: false,
+        },
+        numberOfPages: {
+            type: Number,
+            required: false,
+        },
+        authors: {
+            type: [Schema.Types.ObjectId],
+            ref: 'Author',
+            required: false,
+        },
     },
-    description: {
-        type: String,
-        required: false,
-    },
-    price: {
-        type: bookPriceSchema,
-        required: false,
-    },
-    numberOfPages: {
-        type: Number,
-        required: false,
-    },
-    authors: {
-        type: [Schema.Types.ObjectId],
-        ref: "Author",
-        required: false,
-    }
-}, {versionKey: false});
+    { versionKey: false },
+);
 
-const BookModel = mongoose.model<IBookDocument>("Book", bookSchema);
+const BookModel = mongoose.model<IBookDocument>('Book', bookSchema);
 
 export default BookModel;

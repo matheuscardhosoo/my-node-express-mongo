@@ -1,10 +1,21 @@
-import { IController } from "./interfaces";
-import { IRequest, IResponse, INextFunction, IRouter } from "../dependency_inversion/api";
-import { IReadAuthor } from "../../domain/dependency_inversion/author";
-import { AuthorRepository, AuthorRepositoryFactory } from "../repositories/author";
+import { AuthorRepository, AuthorRepositoryFactory } from '../repositories/author';
+import { ICreateAuthor, IReadAuthor, IUpdateAuthor } from '../../domain/dependency_inversion/author';
+import {
+    ICreateRequest,
+    IDeleteRequest,
+    IListRequest,
+    IListResponse,
+    INoResponse,
+    IReadRequest,
+    IReplaceRequest,
+    IResponse,
+    IUpdateRequest,
+} from './interfaces';
 
+import { IRouter } from '../dependency_inversion/api';
+import { NextFunction } from 'express';
 
-class AuthorController implements IController {
+class AuthorController {
     private authorRepositoryFactory: AuthorRepositoryFactory;
 
     constructor(router: IRouter, authorRepositoryFactory: AuthorRepositoryFactory) {
@@ -18,7 +29,11 @@ class AuthorController implements IController {
         router.delete('/authors/:id', this.delete.bind(this));
     }
 
-    public async list(req: IRequest, res: IResponse, next: INextFunction): Promise<void> {
+    public async list(
+        req: IListRequest<IReadAuthor>,
+        res: IListResponse<IReadAuthor>,
+        next: NextFunction,
+    ): Promise<void> {
         const authorRepository: AuthorRepository = this.authorRepositoryFactory.getInstance();
         try {
             const authors: IReadAuthor[] = await authorRepository.findAll();
@@ -31,7 +46,11 @@ class AuthorController implements IController {
         }
     }
 
-    public async create(req: IRequest, res: IResponse, next: INextFunction): Promise<void> {
+    public async create(
+        req: ICreateRequest<IReadAuthor, ICreateAuthor>,
+        res: IResponse<IReadAuthor>,
+        next: NextFunction,
+    ): Promise<void> {
         const authorRepository: AuthorRepository = this.authorRepositoryFactory.getInstance();
         try {
             const newAuthor: IReadAuthor = await authorRepository.create(req.body);
@@ -44,7 +63,7 @@ class AuthorController implements IController {
         }
     }
 
-    public async read(req: IRequest, res: IResponse, next: INextFunction): Promise<void> {
+    public async read(req: IReadRequest<IReadAuthor>, res: IResponse<IReadAuthor>, next: NextFunction): Promise<void> {
         const authorRepository: AuthorRepository = this.authorRepositoryFactory.getInstance();
         const id: string = req.params.id;
         try {
@@ -62,7 +81,11 @@ class AuthorController implements IController {
         }
     }
 
-    public async replace(req: IRequest, res: IResponse, next: INextFunction): Promise<void> {
+    public async replace(
+        req: IReplaceRequest<IReadAuthor, ICreateAuthor>,
+        res: IResponse<IReadAuthor>,
+        next: NextFunction,
+    ): Promise<void> {
         const authorRepository: AuthorRepository = this.authorRepositoryFactory.getInstance();
         const id: string = req.params.id;
         try {
@@ -76,7 +99,11 @@ class AuthorController implements IController {
         }
     }
 
-    public async update(req: IRequest, res: IResponse, next: INextFunction): Promise<void> {
+    public async update(
+        req: IUpdateRequest<IReadAuthor, IUpdateAuthor>,
+        res: IResponse<IReadAuthor>,
+        next: NextFunction,
+    ): Promise<void> {
         const authorRepository: AuthorRepository = this.authorRepositoryFactory.getInstance();
         const id: string = req.params.id;
         try {
@@ -94,7 +121,7 @@ class AuthorController implements IController {
         }
     }
 
-    public async delete(req: IRequest, res: IResponse, next: INextFunction): Promise<void> {
+    public async delete(req: IDeleteRequest, res: INoResponse, next: NextFunction): Promise<void> {
         const authorRepository: AuthorRepository = this.authorRepositoryFactory.getInstance();
         const id: string = req.params.id;
         try {

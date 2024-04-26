@@ -1,8 +1,7 @@
-import mongoose, { ConnectOptions } from "mongoose";
+import mongoose, { ConnectOptions } from 'mongoose';
 
-import { DATABASE_SETTINGS } from "../settings";
+import { DATABASE_SETTINGS } from '../settings';
 import { IDatabaseManager } from './interfaces/database';
-
 
 class MongooseManager implements IDatabaseManager {
     private connectionOptions: ConnectOptions = {
@@ -11,7 +10,7 @@ class MongooseManager implements IDatabaseManager {
     };
 
     public async connect(): Promise<void> {
-        console.log("Connecting to database");
+        console.log('Connecting to database');
         try {
             await mongoose.connect(DATABASE_SETTINGS.uri, this.connectionOptions);
             console.log(`Connected to database ${DATABASE_SETTINGS.name}`);

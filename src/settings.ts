@@ -1,5 +1,6 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
 
+dotenv.config();
 
 function loadEnvVariable(key: string): string | undefined {
     return process.env[key];
@@ -12,7 +13,6 @@ function loadRequiredEnvVariable(key: string): string {
     }
     return value;
 }
-
 export enum Environment {
     TEST = 'TEST',
     DEV = 'DEV',
@@ -23,16 +23,16 @@ export enum Environment {
 export const ENV = Environment[loadEnvVariable('ENV') as keyof typeof Environment] || Environment.TEST;
 
 export const SERVER_SETTINGS = {
-    port: parseInt(loadEnvVariable('PORT') || '3000')
-}; 
+    port: parseInt(loadEnvVariable('PORT') || '3000'),
+};
 
 export const DATABASE_SETTINGS = {
     uri: loadRequiredEnvVariable('DATABASE_URI'),
-    name: loadEnvVariable('DATABASE_NAME') || `3266-express-mongo-${ENV}`
+    name: loadEnvVariable('DATABASE_NAME') || `3266-express-mongo-${ENV}`,
 };
 
 export default {
     env: ENV,
     server: SERVER_SETTINGS,
-    database: DATABASE_SETTINGS
+    database: DATABASE_SETTINGS,
 };

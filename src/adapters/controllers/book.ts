@@ -1,10 +1,21 @@
-import { IController } from "./interfaces";
-import { IRequest, IResponse, INextFunction, IRouter } from "../dependency_inversion/api";
-import { IReadBook } from "../../domain/dependency_inversion/book";
-import { BookRepository, BookRepositoryFactory } from "../repositories/book";
+import { BookRepository, BookRepositoryFactory } from '../repositories/book';
+import { ICreateBook, IReadBook, IUpdateBook } from '../../domain/dependency_inversion/book';
+import {
+    ICreateRequest,
+    IDeleteRequest,
+    IListRequest,
+    IListResponse,
+    INoResponse,
+    IReadRequest,
+    IReplaceRequest,
+    IResponse,
+    IUpdateRequest,
+} from './interfaces';
 
+import { IRouter } from '../dependency_inversion/api';
+import { NextFunction } from 'express';
 
-class BookController implements IController {
+class BookController {
     private bookRepositoryFactory: BookRepositoryFactory;
 
     constructor(router: IRouter, bookRepositoryFactory: BookRepositoryFactory) {
@@ -18,7 +29,7 @@ class BookController implements IController {
         router.delete('/books/:id', this.delete.bind(this));
     }
 
-    public async list(req: IRequest, res: IResponse, next: INextFunction): Promise<void> {
+    public async list(req: IListRequest<IReadBook>, res: IListResponse<IReadBook>, next: NextFunction): Promise<void> {
         const bookRepository: BookRepository = this.bookRepositoryFactory.getInstance();
         try {
             const books: IReadBook[] = await bookRepository.findAll();
@@ -31,7 +42,11 @@ class BookController implements IController {
         }
     }
 
-    public async create(req: IRequest, res: IResponse, next: INextFunction): Promise<void> {
+    public async create(
+        req: ICreateRequest<IReadBook, ICreateBook>,
+        res: IResponse<IReadBook>,
+        next: NextFunction,
+    ): Promise<void> {
         const bookRepository: BookRepository = this.bookRepositoryFactory.getInstance();
         try {
             const newBook: IReadBook = await bookRepository.create(req.body);
@@ -44,7 +59,7 @@ class BookController implements IController {
         }
     }
 
-    public async read(req: IRequest, res: IResponse, next: INextFunction): Promise<void> {
+    public async read(req: IReadRequest<IReadBook>, res: IResponse<IReadBook>, next: NextFunction): Promise<void> {
         const bookRepository: BookRepository = this.bookRepositoryFactory.getInstance();
         const id: string = req.params.id;
         try {
@@ -62,7 +77,11 @@ class BookController implements IController {
         }
     }
 
-    public async replace(req: IRequest, res: IResponse, next: INextFunction): Promise<void> {
+    public async replace(
+        req: IReplaceRequest<IReadBook, ICreateBook>,
+        res: IResponse<IReadBook>,
+        next: NextFunction,
+    ): Promise<void> {
         const bookRepository: BookRepository = this.bookRepositoryFactory.getInstance();
         const id: string = req.params.id;
         try {
@@ -76,7 +95,11 @@ class BookController implements IController {
         }
     }
 
-    public async update(req: IRequest, res: IResponse, next: INextFunction): Promise<void> {
+    public async update(
+        req: IUpdateRequest<IReadBook, IUpdateBook>,
+        res: IResponse<IReadBook>,
+        next: NextFunction,
+    ): Promise<void> {
         const bookRepository: BookRepository = this.bookRepositoryFactory.getInstance();
         const id: string = req.params.id;
         try {
@@ -94,7 +117,7 @@ class BookController implements IController {
         }
     }
 
-    public async delete(req: IRequest, res: IResponse, next: INextFunction): Promise<void> {
+    public async delete(req: IDeleteRequest, res: INoResponse, next: NextFunction): Promise<void> {
         const bookRepository: BookRepository = this.bookRepositoryFactory.getInstance();
         const id: string = req.params.id;
         try {

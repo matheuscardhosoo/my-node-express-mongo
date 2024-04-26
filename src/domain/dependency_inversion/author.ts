@@ -1,20 +1,25 @@
 export interface IAuthorBookObject {
-    id: string;
+    id?: string;
     title: string;
 }
 
 interface IAuthorBase {
     name: string;
-    birthDate?: Date
+    birthDate?: Date;
 }
 
-export interface ICreateAuthor extends IAuthorBase {
+export interface IAuthor extends IAuthorBase {
+    id?: string;
     books?: string[];
 }
 
 export interface IReadAuthor extends IAuthorBase {
-    id: string;
+    id?: string;
     books?: IAuthorBookObject[];
+}
+
+export interface ICreateAuthor extends IAuthorBase {
+    books?: string[];
 }
 
 export interface IUpdateAuthor extends IAuthorBase {
@@ -29,10 +34,3 @@ export interface IAuthorRepository {
     update: (id: string, data: IUpdateAuthor) => Promise<IReadAuthor | null>;
     delete: (id: string) => Promise<void>;
 }
-
-// Example - Body to create a new author:
-// {
-//     "name": "J. R. R. Tolkien",
-//     "birthDate": "1892-01-03",
-//     "books": []
-// }
