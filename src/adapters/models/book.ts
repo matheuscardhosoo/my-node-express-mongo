@@ -13,11 +13,11 @@ const bookPriceSchema = new Schema<IBookPriceObject>(
     {
         value: {
             type: Number,
-            required: true,
+            required: [true, 'Book price value is required'],
         },
         currency: {
             type: String,
-            required: true,
+            required: [true, 'Book price currency is required'],
             default: 'BRL',
         },
     },
@@ -28,7 +28,7 @@ export const bookSchema = new Schema<IBookDocument>(
     {
         title: {
             type: String,
-            required: true,
+            required: [true, 'Title is required'],
         },
         description: {
             type: String,

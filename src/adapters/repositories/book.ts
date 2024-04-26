@@ -7,10 +7,18 @@ import {
     IReadBook,
     IUpdateBook,
 } from '../../domain/dependency_inversion/book';
+import { ResourceNotFoundError, ValidatorError } from './errors';
 
+import { IDatabaseErrorAdapter } from '../dependency_inversion/database';
 import { startSession } from 'mongoose';
 
 export class BookRepository implements IBookRepository {
+    private databaseErrorAdapter: IDatabaseErrorAdapter;
+
+    constructor(databaseErrorAdapter: IDatabaseErrorAdapter) {
+        this.databaseErrorAdapter = databaseErrorAdapter;
+    }
+
     async create(data: ICreateBook): Promise<IReadBook> {
         const session = await startSession();
         session.startTransaction();
@@ -22,20 +30,31 @@ export class BookRepository implements IBookRepository {
             return this.documentToBook(document, bookAuthors);
         } catch (error) {
             await session.abortTransaction();
-            throw error;
+            throw this.databaseErrorAdapter.adaptError(error as Error);
         } finally {
             await session.endSession();
         }
     }
 
     async findAll(): Promise<IReadBook[]> {
-        const documents: IBookDocument[] = await BookModel.find({}).populate('authors').exec();
-        return documents.map((document: IBookDocument) => this.documentToBook(document));
+        try {
+            const documents: IBookDocument[] = await BookModel.find({}).populate('authors').exec();
+            return documents.map((document: IBookDocument) => this.documentToBook(document));
+        } catch (error) {
+            throw this.databaseErrorAdapter.adaptError(error as Error);
+        }
     }
 
-    async findById(id: string): Promise<IReadBook | null> {
-        const document: IBookDocument | null = await BookModel.findById(id).populate('authors').exec();
-        return document ? this.documentToBook(document) : null;
+    async findById(id: string): Promise<IReadBook> {
+        try {
+            const document: IBookDocument | null = await BookModel.findById(id).populate('authors').exec();
+            if (!document) {
+                throw new ResourceNotFoundError('Book', id);
+            }
+            return this.documentToBook(document);
+        } catch (error) {
+            throw this.databaseErrorAdapter.adaptError(error as Error);
+        }
     }
 
     async replace(id: string, data: ICreateBook): Promise<IReadBook> {
@@ -57,7 +76,7 @@ export class BookRepository implements IBookRepository {
             return this.documentToBook(updatedDocument, bookAuthors);
         } catch (error) {
             await session.abortTransaction();
-            throw error;
+            throw this.databaseErrorAdapter.adaptError(error as Error);
         } finally {
             await session.endSession();
         }
@@ -67,25 +86,28 @@ export class BookRepository implements IBookRepository {
         const session = await startSession();
         session.startTransaction();
         try {
-            const bookAuthors: IBookAuthorObject[] = await this.validateBookAuthors(data.authors);
             const oldDocument: IBookDocument | null = await BookModel.findById(id, {
                 _id: 0,
                 authors: 1,
             });
+            if (!oldDocument) {
+                throw new ResourceNotFoundError('Book', id);
+            }
+            const bookAuthors: IBookAuthorObject[] = await this.validateBookAuthors(data.authors);
             const updatedDocument: IBookDocument | null = await BookModel.findByIdAndUpdate(id, data, {
                 new: true,
                 upsert: false,
                 setDefaultsOnInsert: false,
             });
             if (!updatedDocument) {
-                return null;
+                throw new ResourceNotFoundError('Book', id);
             }
             await this.updateBookAuthors(id, updatedDocument.authors, oldDocument?.authors);
             await session.commitTransaction();
             return this.documentToBook(updatedDocument, bookAuthors);
         } catch (error) {
             await session.abortTransaction();
-            throw error;
+            throw this.databaseErrorAdapter.adaptError(error as Error);
         } finally {
             await session.endSession();
         }
@@ -100,14 +122,14 @@ export class BookRepository implements IBookRepository {
                 authors: 1,
             });
             if (!oldDocument) {
-                return;
+                throw new ResourceNotFoundError('Book', id);
             }
             await BookModel.findByIdAndDelete(id);
             await this.removeBookFromAuthors(id, oldDocument.authors);
             await session.commitTransaction();
         } catch (error) {
             await session.abortTransaction();
-            throw error;
+            throw this.databaseErrorAdapter.adaptError(error as Error);
         } finally {
             await session.endSession();
         }
@@ -130,7 +152,7 @@ export class BookRepository implements IBookRepository {
         }
         const bookAuthors: IBookAuthorObject[] = await this.findBookAuthors(authorsIds);
         if (bookAuthors.length !== authorsIds?.length) {
-            throw new Error('Some authors were not found');
+            throw new ValidatorError({ ['authors']: 'Some authors were not found' });
         }
         return bookAuthors;
     }
@@ -176,9 +198,15 @@ export class BookRepository implements IBookRepository {
 export class BookRepositoryFactory {
     private instance: BookRepository | null = null;
 
+    private databaseErrorAdapter: IDatabaseErrorAdapter;
+
+    constructor(databaseErrorAdapter: IDatabaseErrorAdapter) {
+        this.databaseErrorAdapter = databaseErrorAdapter;
+    }
+
     getInstance(): BookRepository {
         if (!this.instance) {
-            this.instance = new BookRepository();
+            this.instance = new BookRepository(this.databaseErrorAdapter);
         }
         return this.instance;
     }

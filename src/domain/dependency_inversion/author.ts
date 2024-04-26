@@ -29,8 +29,8 @@ export interface IUpdateAuthor extends IAuthorBase {
 export interface IAuthorRepository {
     create: (data: ICreateAuthor) => Promise<IReadAuthor>;
     findAll: () => Promise<IReadAuthor[]>;
-    findById: (id: string) => Promise<IReadAuthor | null>;
+    findById: (id: string) => Promise<IReadAuthor>;
     replace: (id: string, data: ICreateAuthor) => Promise<IReadAuthor>;
-    update: (id: string, data: IUpdateAuthor) => Promise<IReadAuthor | null>;
+    update: (id: string, data: IUpdateAuthor) => Promise<IReadAuthor>;
     delete: (id: string) => Promise<void>;
 }

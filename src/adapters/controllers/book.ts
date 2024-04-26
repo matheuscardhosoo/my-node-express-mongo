@@ -14,6 +14,7 @@ import { ICreateBook, IReadBook, IUpdateBook } from '../../domain/dependency_inv
 import { IHandler, INextFunction, IRouter } from '../dependency_inversion/api';
 
 import { BookRepositoryFactory } from '../repositories/book';
+import { ResourceNotFoundError } from '../repositories/errors';
 
 class BookController {
     private bookRepositoryFactory: BookRepositoryFactory;
@@ -30,7 +31,7 @@ class BookController {
     }
 
     public async list(
-        req: IListRequest<unknown, unknown>,
+        _req: IListRequest<unknown, unknown>,
         res: IListResponse<IReadBook>,
         next: INextFunction,
     ): Promise<void> {
@@ -69,7 +70,7 @@ class BookController {
             if (book) {
                 res.status(200).json(book);
             } else {
-                res.status(404).json({ message: 'Book not found' });
+                throw new ResourceNotFoundError('Book', id);
             }
         } catch (error: unknown) {
             await next.call(error as Error);
@@ -103,7 +104,7 @@ class BookController {
             if (book) {
                 res.status(200).json(book);
             } else {
-                res.status(404).json({ message: 'Book not found' });
+                throw new ResourceNotFoundError('Book', id);
             }
         } catch (error: unknown) {
             await next.call(error as Error);

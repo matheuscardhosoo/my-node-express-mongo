@@ -7,10 +7,18 @@ import {
     IReadAuthor,
     IUpdateAuthor,
 } from '../../domain/dependency_inversion/author';
+import { ResourceNotFoundError, ValidatorError } from './errors';
 
+import { IDatabaseErrorAdapter } from '../dependency_inversion/database';
 import { startSession } from 'mongoose';
 
 export class AuthorRepository implements IAuthorRepository {
+    private databaseErrorAdapter: IDatabaseErrorAdapter;
+
+    constructor(databaseErrorAdapter: IDatabaseErrorAdapter) {
+        this.databaseErrorAdapter = databaseErrorAdapter;
+    }
+
     async create(data: ICreateAuthor): Promise<IReadAuthor> {
         const session = await startSession();
         session.startTransaction();
@@ -22,20 +30,31 @@ export class AuthorRepository implements IAuthorRepository {
             return this.documentToAuthor(document, authorBooks);
         } catch (error) {
             await session.abortTransaction();
-            throw error;
+            throw this.databaseErrorAdapter.adaptError(error as Error);
         } finally {
             await session.endSession();
         }
     }
 
     async findAll(): Promise<IReadAuthor[]> {
-        const documents: IAuthorDocument[] = await AuthorModel.find({}).populate('books').exec();
-        return documents.map((document: IAuthorDocument) => this.documentToAuthor(document));
+        try {
+            const documents: IAuthorDocument[] = await AuthorModel.find({}).populate('books').exec();
+            return documents.map((document: IAuthorDocument) => this.documentToAuthor(document));
+        } catch (error) {
+            throw this.databaseErrorAdapter.adaptError(error as Error);
+        }
     }
 
-    async findById(id: string): Promise<IReadAuthor | null> {
-        const document: IAuthorDocument | null = await AuthorModel.findById(id).populate('books').exec();
-        return document ? this.documentToAuthor(document) : null;
+    async findById(id: string): Promise<IReadAuthor> {
+        try {
+            const document: IAuthorDocument | null = await AuthorModel.findById(id).populate('books').exec();
+            if (!document) {
+                throw new ResourceNotFoundError('Author', id);
+            }
+            return this.documentToAuthor(document);
+        } catch (error) {
+            throw this.databaseErrorAdapter.adaptError(error as Error);
+        }
     }
 
     async replace(id: string, data: ICreateAuthor): Promise<IReadAuthor> {
@@ -54,32 +73,35 @@ export class AuthorRepository implements IAuthorRepository {
             return this.documentToAuthor(updatedDocument, authorBooks);
         } catch (error) {
             await session.abortTransaction();
-            throw error;
+            throw this.databaseErrorAdapter.adaptError(error as Error);
         } finally {
             await session.endSession();
         }
     }
 
-    async update(id: string, data: IUpdateAuthor): Promise<IReadAuthor | null> {
+    async update(id: string, data: IUpdateAuthor): Promise<IReadAuthor> {
         const session = await startSession();
         session.startTransaction();
         try {
-            const authorBooks: IAuthorBookObject[] = await this.validateAuthorBooks(data.books);
             const oldDocument: IAuthorDocument | null = await AuthorModel.findById(id, { _id: 0, books: 1 });
+            if (!oldDocument) {
+                throw new ResourceNotFoundError('Author', id);
+            }
+            const authorBooks: IAuthorBookObject[] = await this.validateAuthorBooks(data.books);
             const updatedDocument: IAuthorDocument | null = await AuthorModel.findByIdAndUpdate(id, data, {
                 new: true,
                 upsert: false,
                 setDefaultsOnInsert: false,
             });
             if (!updatedDocument) {
-                return null;
+                throw new ResourceNotFoundError('Author', id);
             }
             await this.updateAuthorBooks(id, updatedDocument.books, oldDocument?.books);
             await session.commitTransaction();
             return this.documentToAuthor(updatedDocument, authorBooks);
         } catch (error) {
             await session.abortTransaction();
-            throw error;
+            throw this.databaseErrorAdapter.adaptError(error as Error);
         } finally {
             await session.endSession();
         }
@@ -91,14 +113,14 @@ export class AuthorRepository implements IAuthorRepository {
         try {
             const oldDocument: IAuthorDocument | null = await AuthorModel.findById(id, { _id: 0, books: 1 });
             if (!oldDocument) {
-                return;
+                throw new ResourceNotFoundError('Author', id);
             }
             await AuthorModel.findByIdAndDelete(id);
             await this.removeAuthorFromBooks(id, oldDocument.books);
             await session.commitTransaction();
         } catch (error) {
             await session.abortTransaction();
-            throw error;
+            throw this.databaseErrorAdapter.adaptError(error as Error);
         } finally {
             await session.endSession();
         }
@@ -116,9 +138,12 @@ export class AuthorRepository implements IAuthorRepository {
     }
 
     private async validateAuthorBooks(booksIds?: string[]): Promise<IAuthorBookObject[]> {
+        if (!booksIds) {
+            return [];
+        }
         const authorBooks: IAuthorBookObject[] = await this.findAuthorBooks(booksIds);
         if (authorBooks.length !== booksIds?.length) {
-            throw new Error('Some books were not found');
+            throw new ValidatorError({ ['books']: 'Some books were not found' });
         }
         return authorBooks;
     }
@@ -162,9 +187,15 @@ export class AuthorRepository implements IAuthorRepository {
 export class AuthorRepositoryFactory {
     private instance: AuthorRepository | null = null;
 
+    private databaseErrorAdapter: IDatabaseErrorAdapter;
+
+    constructor(databaseErrorAdapter: IDatabaseErrorAdapter) {
+        this.databaseErrorAdapter = databaseErrorAdapter;
+    }
+
     getInstance(): AuthorRepository {
         if (!this.instance) {
-            this.instance = new AuthorRepository();
+            this.instance = new AuthorRepository(this.databaseErrorAdapter);
         }
         return this.instance;
     }

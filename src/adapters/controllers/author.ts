@@ -14,6 +14,8 @@ import {
 import { ICreateAuthor, IReadAuthor, IUpdateAuthor } from '../../domain/dependency_inversion/author';
 import { IHandler, INextFunction, IRouter } from '../dependency_inversion/api';
 
+import { ResourceNotFoundError } from '../repositories/errors';
+
 class AuthorController {
     private authorRepositoryFactory: AuthorRepositoryFactory;
 
@@ -29,7 +31,7 @@ class AuthorController {
     }
 
     public async list(
-        req: IListRequest<unknown, unknown>,
+        _req: IListRequest<unknown, unknown>,
         res: IListResponse<IReadAuthor>,
         next: INextFunction,
     ): Promise<void> {
@@ -68,7 +70,7 @@ class AuthorController {
             if (author) {
                 res.status(200).json(author);
             } else {
-                res.status(404).json({ message: 'Author not found' });
+                throw new ResourceNotFoundError('Author', id);
             }
         } catch (error: unknown) {
             await next.call(error as Error);
@@ -102,7 +104,7 @@ class AuthorController {
             if (updatedAuthor) {
                 res.status(200).json(updatedAuthor);
             } else {
-                res.status(404).json({ message: 'Author not found' });
+                throw new ResourceNotFoundError('Author', id);
             }
         } catch (error: unknown) {
             await next.call(error as Error);

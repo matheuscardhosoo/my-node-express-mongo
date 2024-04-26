@@ -7,7 +7,9 @@ export interface IAcessByIndexParams extends ParamsDictionary {
 }
 
 export interface IErrorResponseBody {
+    status: number;
     message: string;
+    errors?: { [path: string]: string };
 }
 
 export interface IListRequest<RequestParams, RequestQuery> extends IRequest<RequestParams, RequestQuery, unknown> {}

@@ -13,7 +13,7 @@ export const authorSchema = new Schema<IAuthorDocument>(
     {
         name: {
             type: String,
-            required: true,
+            required: [true, 'Name is required'],
         },
         birthDate: {
             type: Date,
