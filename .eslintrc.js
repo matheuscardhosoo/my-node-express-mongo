@@ -2,18 +2,14 @@ module.exports = {
     env: {
         es6: true,
         node: true,
-        browser: true
+        browser: true,
     },
     parser: '@typescript-eslint/parser',
     parserOptions: {
         ecmaVersion: 2018,
-        sourceType: 'module'
+        sourceType: 'module',
     },
-    plugins: [
-        'prettier',
-        '@typescript-eslint',
-        'import'
-    ],
+    plugins: ['prettier', '@typescript-eslint', 'import'],
     extends: [
         'eslint:recommended',
         'airbnb-typescript/base',
@@ -22,7 +18,7 @@ module.exports = {
     ],
     globals: {
         Atomics: 'readonly',
-        SharedArrayBuffer: 'readonly'
+        SharedArrayBuffer: 'readonly',
     },
     rules: {
         'prettier/prettier': 'error',
@@ -30,27 +26,39 @@ module.exports = {
             'error',
             'ignorePackages',
             {
-                'ts': 'never'
-            }
+                ts: 'never',
+            },
         ],
-        'quotes': ['error', 'single'],
-        'semi': ['error', 'always'],
+        quotes: ['error', 'single'],
+        semi: ['error', 'always'],
         'no-console': 'off',
         'sort-imports': [
             'error',
             {
-                'ignoreCase': false,
-                'ignoreDeclarationSort': false,
-                'ignoreMemberSort': false,
-                'memberSyntaxSortOrder': ['none', 'all', 'multiple', 'single'],
-                'allowSeparatedGroups': false
-            }
-        ]
+                ignoreCase: false,
+                ignoreDeclarationSort: false,
+                ignoreMemberSort: false,
+                memberSyntaxSortOrder: ['none', 'all', 'multiple', 'single'],
+                allowSeparatedGroups: false,
+            },
+        ],
+        '@typescript-eslint/no-unused-vars': [
+            'error',
+            {
+                args: 'all',
+                argsIgnorePattern: '^_',
+                caughtErrors: 'all',
+                caughtErrorsIgnorePattern: '^_',
+                destructuredArrayIgnorePattern: '^_',
+                varsIgnorePattern: '^_',
+                ignoreRestSiblings: true,
+            },
+        ],
     },
     settings: {
         'import/resolver': {
-            'typescript': {}
-        }
+            typescript: {},
+        },
     },
     overrides: [
         {
