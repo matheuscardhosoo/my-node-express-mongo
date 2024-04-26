@@ -1,5 +1,5 @@
-import AuthorModel, { IAuthorDocument } from '../models/author';
-import BookModel, { IBookDocument } from '../models/book';
+import { AuthorModel, BookModel, IAuthorDocument, IBookDocument } from '../models/index';
+import { ClientSession, startSession } from 'mongoose';
 import {
     IBookAuthorObject,
     IBookRepository,
@@ -10,7 +10,6 @@ import {
 import { ResourceNotFoundError, ValidatorError } from './errors';
 
 import { IDatabaseErrorAdapter } from '../dependency_inversion/database';
-import { startSession } from 'mongoose';
 
 export class BookRepository implements IBookRepository {
     private databaseErrorAdapter: IDatabaseErrorAdapter;
@@ -23,9 +22,10 @@ export class BookRepository implements IBookRepository {
         const session = await startSession();
         session.startTransaction();
         try {
-            const bookAuthors: IBookAuthorObject[] = await this.validateBookAuthors(data.authors);
-            const document: IBookDocument = await BookModel.create(data);
-            await this.addBookToAuthors(document._id, document.authors);
+            const bookAuthors = await this.validateBookAuthors(data.authors, session);
+            const document = new BookModel(data);
+            await document.save({ session });
+            await this.addBookToAuthors(document._id, document.authors, session);
             await session.commitTransaction();
             return this.documentToBook(document, bookAuthors);
         } catch (error) {
@@ -38,7 +38,7 @@ export class BookRepository implements IBookRepository {
 
     async findAll(): Promise<IReadBook[]> {
         try {
-            const documents: IBookDocument[] = await BookModel.find({}).populate('authors').exec();
+            const documents = await BookModel.find({}).populate('authors').exec();
             return documents.map((document: IBookDocument) => this.documentToBook(document));
         } catch (error) {
             throw this.databaseErrorAdapter.adaptError(error as Error);
@@ -47,11 +47,12 @@ export class BookRepository implements IBookRepository {
 
     async findById(id: string): Promise<IReadBook> {
         try {
-            const document: IBookDocument | null = await BookModel.findById(id).populate('authors').exec();
+            const document = await BookModel.findById(id);
             if (!document) {
                 throw new ResourceNotFoundError('Book', id);
             }
-            return this.documentToBook(document);
+            const populatedDocument = await document.populate('authors');
+            return this.documentToBook(populatedDocument);
         } catch (error) {
             throw this.databaseErrorAdapter.adaptError(error as Error);
         }
@@ -61,15 +62,14 @@ export class BookRepository implements IBookRepository {
         const session = await startSession();
         session.startTransaction();
         try {
-            const bookAuthors: IBookAuthorObject[] = await this.validateBookAuthors(data.authors);
-            const oldDocument: IBookDocument | null = await BookModel.findById(id, {
-                _id: 0,
-                authors: 1,
-            });
-            const updatedDocument: IBookDocument = await BookModel.findOneAndReplace({ _id: id }, data, {
+            const bookAuthors = await this.validateBookAuthors(data.authors, session);
+            const oldDocument = await BookModel.findById(id, { _id: 0, authors: 1 }, { session });
+            const updatedDocument = await BookModel.findOneAndReplace({ _id: id }, data, {
                 new: true,
                 upsert: true,
                 setDefaultsOnInsert: true,
+                runValidators: true,
+                session,
             });
             await this.updateBookAuthors(id, updatedDocument.authors, oldDocument?.authors);
             await session.commitTransaction();
@@ -82,27 +82,26 @@ export class BookRepository implements IBookRepository {
         }
     }
 
-    async update(id: string, data: IUpdateBook): Promise<IReadBook | null> {
+    async update(id: string, data: IUpdateBook): Promise<IReadBook> {
         const session = await startSession();
         session.startTransaction();
         try {
-            const oldDocument: IBookDocument | null = await BookModel.findById(id, {
-                _id: 0,
-                authors: 1,
-            });
+            const oldDocument = await BookModel.findById(id, { _id: 0, authors: 1 }, { session });
             if (!oldDocument) {
                 throw new ResourceNotFoundError('Book', id);
             }
-            const bookAuthors: IBookAuthorObject[] = await this.validateBookAuthors(data.authors);
-            const updatedDocument: IBookDocument | null = await BookModel.findByIdAndUpdate(id, data, {
-                new: true,
+            const bookAuthors = await this.validateBookAuthors(data.authors, session);
+            const updatedDocument = await BookModel.findByIdAndUpdate(id, data, {
                 upsert: false,
                 setDefaultsOnInsert: false,
+                runValidators: true,
+                returnDocument: 'after',
+                session,
             });
             if (!updatedDocument) {
                 throw new ResourceNotFoundError('Book', id);
             }
-            await this.updateBookAuthors(id, updatedDocument.authors, oldDocument?.authors);
+            await this.updateBookAuthors(id, updatedDocument.authors, oldDocument?.authors, session);
             await session.commitTransaction();
             return this.documentToBook(updatedDocument, bookAuthors);
         } catch (error) {
@@ -117,15 +116,11 @@ export class BookRepository implements IBookRepository {
         const session = await startSession();
         session.startTransaction();
         try {
-            const oldDocument: IBookDocument | null = await BookModel.findById(id, {
-                _id: 0,
-                authors: 1,
-            });
+            const oldDocument = await BookModel.findByIdAndDelete(id, { session });
             if (!oldDocument) {
                 throw new ResourceNotFoundError('Book', id);
             }
-            await BookModel.findByIdAndDelete(id);
-            await this.removeBookFromAuthors(id, oldDocument.authors);
+            await this.removeBookFromAuthors(id, oldDocument.authors, session);
             await session.commitTransaction();
         } catch (error) {
             await session.abortTransaction();
@@ -135,45 +130,63 @@ export class BookRepository implements IBookRepository {
         }
     }
 
-    private async findBookAuthors(authorsIds?: string[]): Promise<IBookAuthorObject[]> {
+    private async findBookAuthors(authorsIds?: string[], session?: ClientSession): Promise<IBookAuthorObject[]> {
         if (!authorsIds) {
             return [];
         }
-        const documents: IAuthorDocument[] = await AuthorModel.find({ _id: { $in: authorsIds } }, { name: 1 });
+        const documents: IAuthorDocument[] = await AuthorModel.find(
+            { _id: { $in: authorsIds } },
+            { name: 1 },
+            { session },
+        );
         return documents.map((document: IAuthorDocument) => ({
             id: document._id,
             name: document.name,
         }));
     }
 
-    private async validateBookAuthors(authorsIds?: string[]): Promise<IBookAuthorObject[]> {
+    private async validateBookAuthors(authorsIds?: string[], session?: ClientSession): Promise<IBookAuthorObject[]> {
         if (!authorsIds) {
             return [];
         }
-        const bookAuthors: IBookAuthorObject[] = await this.findBookAuthors(authorsIds);
-        if (bookAuthors.length !== authorsIds?.length) {
-            throw new ValidatorError({ ['authors']: 'Some authors were not found' });
+        const authorsIdsSet = new Set(authorsIds);
+        const hasDuplicates = authorsIds.length !== authorsIdsSet.size;
+        const foundBookAuthors = await this.findBookAuthors(authorsIds, session);
+        const foundBookAuthorsIds = foundBookAuthors.map(
+            (author: IBookAuthorObject) => author.id?.toString() as string,
+        );
+        if (hasDuplicates || authorsIds.length !== foundBookAuthorsIds.length) {
+            throw new ValidatorError({ ['author']: 'Authors list contains invalid ids' });
         }
-        return bookAuthors;
+        return foundBookAuthors;
     }
 
-    private async addBookToAuthors(bookId?: string, newAuthorsIds?: string[]): Promise<void> {
+    private async addBookToAuthors(bookId?: string, newAuthorsIds?: string[], session?: ClientSession): Promise<void> {
         if (!bookId || !newAuthorsIds) {
             return;
         }
-        await AuthorModel.updateMany({ _id: { $in: newAuthorsIds } }, { $push: { books: bookId } });
+        await AuthorModel.updateMany({ _id: { $in: newAuthorsIds } }, { $push: { books: bookId } }, { session });
     }
 
-    private async removeBookFromAuthors(bookId: string, oldAuthorsIds?: string[]): Promise<void> {
+    private async removeBookFromAuthors(
+        bookId: string,
+        oldAuthorsIds?: string[],
+        session?: ClientSession,
+    ): Promise<void> {
         if (!oldAuthorsIds) {
             return;
         }
-        await AuthorModel.updateMany({ _id: { $in: oldAuthorsIds } }, { $pull: { books: bookId } });
+        await AuthorModel.updateMany({ _id: { $in: oldAuthorsIds } }, { $pull: { books: bookId } }, { session });
     }
 
-    private async updateBookAuthors(bookId: string, newAuthorsIds?: string[], oldAuthorsIds?: string[]): Promise<void> {
-        await this.removeBookFromAuthors(bookId, oldAuthorsIds);
-        await this.addBookToAuthors(bookId, newAuthorsIds);
+    private async updateBookAuthors(
+        bookId: string,
+        newAuthorsIds?: string[],
+        oldAuthorsIds?: string[],
+        session?: ClientSession,
+    ): Promise<void> {
+        await this.removeBookFromAuthors(bookId, oldAuthorsIds, session);
+        await this.addBookToAuthors(bookId, newAuthorsIds, session);
     }
 
     private documentToBook(document: IBookDocument, cachedAuthors?: IBookAuthorObject[]): IReadBook {

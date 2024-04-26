@@ -66,7 +66,7 @@ class BookController {
         const bookRepository = this.bookRepositoryFactory.getInstance();
         const id = req.getParams().id;
         try {
-            const book: IReadBook | null = await bookRepository.findById(id);
+            const book = await bookRepository.findById(id);
             if (book) {
                 res.status(200).json(book);
             } else {
@@ -85,7 +85,7 @@ class BookController {
         const bookRepository = this.bookRepositoryFactory.getInstance();
         const id = req.getParams().id;
         try {
-            const book: IReadBook | null = await bookRepository.replace(id, req.getBody());
+            const book = await bookRepository.replace(id, req.getBody());
             res.status(200).json(book);
         } catch (error: unknown) {
             await next.call(error as Error);
@@ -100,7 +100,7 @@ class BookController {
         const bookRepository = this.bookRepositoryFactory.getInstance();
         const id = req.getParams().id;
         try {
-            const book: IReadBook | null = await bookRepository.update(id, req.getBody());
+            const book = await bookRepository.update(id, req.getBody());
             if (book) {
                 res.status(200).json(book);
             } else {

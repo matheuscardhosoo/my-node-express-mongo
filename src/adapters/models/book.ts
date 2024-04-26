@@ -14,11 +14,16 @@ const bookPriceSchema = new Schema<IBookPriceObject>(
         value: {
             type: Number,
             required: [true, 'Book price value is required'],
+            min: [0, 'Book price must be greater than or equal to 0'],
         },
         currency: {
             type: String,
             required: [true, 'Book price currency is required'],
             default: 'BRL',
+            enum: {
+                values: ['BRL', 'USD', 'EUR'],
+                message: 'Book price currency must be BRL, USD or EUR',
+            },
         },
     },
     { versionKey: false, _id: false },
@@ -41,6 +46,8 @@ export const bookSchema = new Schema<IBookDocument>(
         numberOfPages: {
             type: Number,
             required: false,
+            min: [1, 'Number of pages must be greater than 0'],
+            max: [10000, 'Number of pages must be less than 10000'],
         },
         authors: {
             type: [Schema.Types.ObjectId],

@@ -36,8 +36,8 @@ export interface IUpdateBook extends IBookBase {
 export interface IBookRepository {
     create: (data: ICreateBook) => Promise<IReadBook>;
     findAll: () => Promise<IReadBook[]>;
-    findById: (id: string) => Promise<IReadBook | null>;
+    findById: (id: string) => Promise<IReadBook>;
     replace: (id: string, data: ICreateBook) => Promise<IReadBook>;
-    update: (id: string, data: IUpdateBook) => Promise<IReadBook | null>;
+    update: (id: string, data: IUpdateBook) => Promise<IReadBook>;
     delete: (id: string) => Promise<void>;
 }
