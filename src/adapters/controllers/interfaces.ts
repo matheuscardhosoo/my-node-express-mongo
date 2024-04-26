@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { IRequest, IResponse } from '../dependency_inversion/api';
 
 import { ParamsDictionary } from 'express-serve-static-core';
 
@@ -6,28 +6,24 @@ export interface IAcessByIndexParams extends ParamsDictionary {
     [id: string]: string;
 }
 
-export interface IEmptyBody {}
-
 export interface IErrorResponseBody {
     message: string;
 }
 
-export interface IListResponse<IRead> extends Response<IRead[] | IErrorResponseBody> {}
+export interface IListRequest<RequestParams, RequestQuery> extends IRequest<RequestParams, RequestQuery, unknown> {}
 
-export interface IResponse<IRead> extends Response<IRead | IErrorResponseBody> {}
+export interface ICreateRequest<RequestParams, CreateBody> extends IRequest<RequestParams, unknown, CreateBody> {}
 
-export interface INoResponse extends Response<IEmptyBody | IErrorResponseBody> {}
+export interface IReadRequest<RequestParams> extends IRequest<RequestParams, unknown, unknown> {}
 
-export interface IListRequest<IRead> extends Request<unknown, IListResponse<IRead>, IEmptyBody, unknown> {}
+export interface IReplaceRequest<RequestParams, CreateBody> extends IRequest<RequestParams, unknown, CreateBody> {}
 
-export interface ICreateRequest<IRead, ICreate> extends Request<unknown, IResponse<IRead>, ICreate, unknown> {}
+export interface IUpdateRequest<RequestParams, UpdateBody> extends IRequest<RequestParams, unknown, UpdateBody> {}
 
-export interface IReadRequest<IRead> extends Request<IAcessByIndexParams, IResponse<IRead>, IEmptyBody, unknown> {}
+export interface IDeleteRequest<RequestParams> extends IRequest<RequestParams, unknown, unknown> {}
 
-export interface IReplaceRequest<IRead, ICreate>
-    extends Request<IAcessByIndexParams, IResponse<IRead>, ICreate, unknown> {}
+export interface INoResponse<Locals = unknown> extends IResponse<null | IErrorResponseBody, Locals> {}
 
-export interface IUpdateRequest<IRead, IUpdate>
-    extends Request<IAcessByIndexParams, IResponse<IRead>, IUpdate, unknown> {}
+export interface ISingleResponse<Body, Locals = unknown> extends IResponse<Body | IErrorResponseBody, Locals> {}
 
-export interface IDeleteRequest extends Request<IAcessByIndexParams, INoResponse, IEmptyBody, unknown> {}
+export interface IListResponse<Body, Locals = unknown> extends IResponse<Body[] | IErrorResponseBody, Locals> {}
