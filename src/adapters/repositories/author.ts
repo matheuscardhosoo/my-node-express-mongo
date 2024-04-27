@@ -1,10 +1,10 @@
-import { AuthorModel, BookModel, IAuthorDocument, IBookDocument } from '../models/index';
+import { AuthorFilterQuery, AuthorModel, BookModel, IAuthorDocument, IBookDocument } from '../models/index';
 import { ClientSession, startSession } from 'mongoose';
 import {
     IAuthorBookObject,
     IAuthorRepository,
     ICreateAuthor,
-    IQueryAuthor,
+    IFilterAuthor,
     IReadAuthor,
     IUpdateAuthor,
 } from '../../domain/dependency_inversion/author';
@@ -37,19 +37,29 @@ export class AuthorRepository implements IAuthorRepository {
         }
     }
 
-    async findAll(): Promise<IReadAuthor[]> {
+    async count(filter: IFilterAuthor): Promise<number> {
         try {
-            const documents = await AuthorModel.find({}).populate('books').exec();
-            return documents.map((document: IAuthorDocument) => this.documentToAuthor(document));
+            const filterQuery = await this.prepareFilterQuery(filter);
+            return await AuthorModel.countDocuments(filterQuery);
         } catch (error) {
             throw this.databaseErrorAdapter.adaptError(error as Error);
         }
     }
 
-    async findByQuery(query: IQueryAuthor): Promise<IReadAuthor[]> {
+    async find(
+        filter: IFilterAuthor,
+        page: number = 1,
+        pageSize: number = 20,
+        sort: string = 'id',
+    ): Promise<IReadAuthor[]> {
         try {
-            const queryFilter = await this.prepareQueryFilter(query);
-            const documents = await AuthorModel.find(queryFilter).populate('books').exec();
+            const filterQuery = await this.prepareFilterQuery(filter);
+            const documents = await AuthorModel.find(filterQuery)
+                .skip((page - 1) * pageSize)
+                .limit(pageSize)
+                .sort(sort)
+                .populate('books')
+                .exec();
             return documents.map((document: IAuthorDocument) => this.documentToAuthor(document));
         } catch (error) {
             throw this.databaseErrorAdapter.adaptError(error as Error);
@@ -210,20 +220,17 @@ export class AuthorRepository implements IAuthorRepository {
         };
     }
 
-    private async prepareQueryFilter(query: IQueryAuthor): Promise<Record<string, unknown>> {
-        const queryFilter: Record<string, unknown> = {};
-        if (query.name__ilike) queryFilter.name = { $regex: new RegExp(query.name__ilike, 'i') };
-        if (query.birthDate__gte && query.birthDate__lte)
-            queryFilter.birthDate = { $gte: query.birthDate__gte, $lte: query.birthDate__lte };
-        else if (query.birthDate__gte) queryFilter.birthDate = { $gte: query.birthDate__gte };
-        else if (query.birthDate__lte) queryFilter.birthDate = { $lte: query.birthDate__lte };
+    private async prepareFilterQuery(query: IFilterAuthor): Promise<AuthorFilterQuery> {
+        const authorBooksIds: string[] = [];
         if (query.books__title__ilike) {
-            const booksIds = await BookModel.find({
-                title: { $regex: new RegExp(query.books__title__ilike, 'i') },
-            }).distinct('_id');
-            queryFilter.books = { $in: booksIds };
+            authorBooksIds.push(
+                ...(await BookModel.find(
+                    { title: { $regex: query.books__title__ilike, $options: 'i' } },
+                    { _id: 1 },
+                ).distinct('_id')),
+            );
         }
-        return queryFilter;
+        return new AuthorFilterQuery(query, authorBooksIds);
     }
 }
 

@@ -33,7 +33,7 @@ export interface IUpdateBook extends IBookBase {
     authors?: string[];
 }
 
-export interface IQueryBook extends Record<string, unknown> {
+export interface IFilterBook extends Record<string, unknown> {
     title__ilike?: string;
     numberOfPages__gte?: number;
     numberOfPages__lte?: number;
@@ -42,8 +42,8 @@ export interface IQueryBook extends Record<string, unknown> {
 
 export interface IBookRepository {
     create: (data: ICreateBook) => Promise<IReadBook>;
-    findAll: () => Promise<IReadBook[]>;
-    findByQuery: (query: IQueryBook) => Promise<IReadBook[]>;
+    count: (filter: IFilterBook) => Promise<number>;
+    find: (filter: IFilterBook, page?: number, pageSize?: number, sort?: string) => Promise<IReadBook[]>;
     findById: (id: string) => Promise<IReadBook>;
     replace: (id: string, data: ICreateBook) => Promise<IReadBook>;
     update: (id: string, data: IUpdateBook) => Promise<IReadBook>;

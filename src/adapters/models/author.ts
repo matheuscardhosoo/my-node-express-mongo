@@ -1,6 +1,5 @@
-import mongoose, { Document, Schema } from 'mongoose';
-
-import { IAuthor } from '../../domain/dependency_inversion/author';
+import { IAuthor, IFilterAuthor } from '../../domain/dependency_inversion/author';
+import mongoose, { Document, FilterQuery, Schema } from 'mongoose';
 
 export interface IAuthorDocument extends Document<string, unknown, IAuthor> {
     id: Schema.Types.ObjectId;
@@ -9,7 +8,31 @@ export interface IAuthorDocument extends Document<string, unknown, IAuthor> {
     books?: string[];
 }
 
-export const authorSchema = new Schema<IAuthorDocument>(
+export class AuthorFilterQuery implements FilterQuery<IAuthor> {
+    name?: { $regex: string; $options: string };
+
+    birthDate?: { $gte?: Date; $lte?: Date };
+
+    books?: { $in: string[] };
+
+    constructor(filter: IFilterAuthor, authorBooksIds: string[] = []) {
+        if (filter.name__ilike) {
+            this.name = { $regex: filter.name__ilike, $options: 'i' };
+        }
+        if (filter.birthDate__gte && filter.birthDate__lte) {
+            this.birthDate = { $gte: filter.birthDate__gte, $lte: filter.birthDate__lte };
+        } else if (filter.birthDate__gte) {
+            this.birthDate = { $gte: filter.birthDate__gte };
+        } else if (filter.birthDate__lte) {
+            this.birthDate = { $lte: filter.birthDate__lte };
+        }
+        if (filter.books__title__ilike) {
+            this.books = { $in: authorBooksIds };
+        }
+    }
+}
+
+const authorSchema = new Schema<IAuthorDocument>(
     {
         name: {
             type: String,

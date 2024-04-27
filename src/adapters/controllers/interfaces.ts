@@ -1,9 +1,15 @@
-import { IRequest, IResponse } from '../dependency_inversion/api';
+import { IRequest, IRequestQuery, IResponse } from '../dependency_inversion/api';
 
 import { ParamsDictionary } from 'express-serve-static-core';
 
 export interface IAcessByIndexParams extends ParamsDictionary {
     [id: string]: string;
+}
+
+export interface IListRequestQuery extends IRequestQuery {
+    page?: string;
+    pageSize?: string;
+    sort?: string;
 }
 
 export interface IErrorResponseBody {
@@ -12,7 +18,15 @@ export interface IErrorResponseBody {
     errors?: { [path: string]: string };
 }
 
-export interface IListRequest<RequestParams, RequestQuery> extends IRequest<RequestParams, RequestQuery, unknown> {}
+export interface IPaginatedListResponseBody<Body> {
+    data: Body[];
+    total: number;
+    page: number;
+    pageSize: number;
+}
+
+export interface IListRequest<RequestParams, ListRequestQuery>
+    extends IRequest<RequestParams, ListRequestQuery, unknown> {}
 
 export interface ICreateRequest<RequestParams, CreateBody> extends IRequest<RequestParams, unknown, CreateBody> {}
 
@@ -29,3 +43,6 @@ export interface INoResponse<Locals = unknown> extends IResponse<null | IErrorRe
 export interface ISingleResponse<Body, Locals = unknown> extends IResponse<Body | IErrorResponseBody, Locals> {}
 
 export interface IListResponse<Body, Locals = unknown> extends IResponse<Body[] | IErrorResponseBody, Locals> {}
+
+export interface IPaginatedListResponse<Body, Locals = unknown>
+    extends IResponse<IPaginatedListResponseBody<Body> | IErrorResponseBody, Locals> {}

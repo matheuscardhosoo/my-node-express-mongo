@@ -3,18 +3,27 @@ import {
     ICreateRequest,
     IDeleteRequest,
     IListRequest,
-    IListResponse,
+    IListRequestQuery,
     INoResponse,
+    IPaginatedListResponse,
+    IPaginatedListResponseBody,
     IReadRequest,
     IReplaceRequest,
     ISingleResponse,
     IUpdateRequest,
 } from './interfaces';
-import { ICreateBook, IQueryBook, IReadBook, IUpdateBook } from '../../domain/dependency_inversion/book';
+import { ICreateBook, IFilterBook, IReadBook, IUpdateBook } from '../../domain/dependency_inversion/book';
 import { IHandler, INextFunction, IRouter } from '../dependency_inversion/api';
 
 import { BookRepositoryFactory } from '../repositories/book';
 import { ResourceNotFoundError } from '../repositories/errors';
+
+interface IBookRequestQuery extends IListRequestQuery {
+    title__ilike?: string;
+    numberOfPages__gte?: string;
+    numberOfPages__lte?: string;
+    authors__name__ilike?: string;
+}
 
 class BookController {
     private bookRepositoryFactory: BookRepositoryFactory;
@@ -31,15 +40,31 @@ class BookController {
     }
 
     public async list(
-        req: IListRequest<unknown, IQueryBook>,
-        res: IListResponse<IReadBook>,
+        req: IListRequest<unknown, IBookRequestQuery>,
+        res: IPaginatedListResponse<IReadBook>,
         next: INextFunction,
     ): Promise<void> {
         const bookRepository = this.bookRepositoryFactory.getInstance();
         try {
             const query = req.getQuery();
-            const books = await bookRepository.findByQuery(query);
-            res.status(200).json(books);
+            const page = query.page ? parseInt(query.page, 10) : undefined;
+            const pageSize = query.pageSize ? parseInt(query.pageSize, 10) : undefined;
+            const sort = query.sort;
+            const filter: IFilterBook = {
+                title__ilike: query.title__ilike,
+                numberOfPages__gte: query.numberOfPages__gte ? parseInt(query.numberOfPages__gte) : undefined,
+                numberOfPages__lte: query.numberOfPages__lte ? parseInt(query.numberOfPages__lte) : undefined,
+                authors__name__ilike: query.authors__name__ilike,
+            };
+            const total = await bookRepository.count(filter);
+            const books = await bookRepository.find(filter, page, pageSize, sort);
+            const responseBody: IPaginatedListResponseBody<IReadBook> = {
+                data: books,
+                total: total,
+                page: page || 1,
+                pageSize: books.length,
+            };
+            res.status(200).json(responseBody);
         } catch (error: unknown) {
             await next.call(error as Error);
         }

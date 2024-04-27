@@ -4,17 +4,26 @@ import {
     ICreateRequest,
     IDeleteRequest,
     IListRequest,
-    IListResponse,
+    IListRequestQuery,
     INoResponse,
+    IPaginatedListResponse,
+    IPaginatedListResponseBody,
     IReadRequest,
     IReplaceRequest,
     ISingleResponse,
     IUpdateRequest,
 } from './interfaces';
-import { ICreateAuthor, IQueryAuthor, IReadAuthor, IUpdateAuthor } from '../../domain/dependency_inversion/author';
+import { ICreateAuthor, IFilterAuthor, IReadAuthor, IUpdateAuthor } from '../../domain/dependency_inversion/author';
 import { IHandler, INextFunction, IRouter } from '../dependency_inversion/api';
 
 import { ResourceNotFoundError } from '../repositories/errors';
+
+interface IAuthorRequestQuery extends IListRequestQuery {
+    name__ilike?: string;
+    birthDate__gte?: string;
+    birthDate__lte?: string;
+    books__title__ilike?: string;
+}
 
 class AuthorController {
     private authorRepositoryFactory: AuthorRepositoryFactory;
@@ -31,15 +40,31 @@ class AuthorController {
     }
 
     public async list(
-        req: IListRequest<unknown, IQueryAuthor>,
-        res: IListResponse<IReadAuthor>,
+        req: IListRequest<unknown, IAuthorRequestQuery>,
+        res: IPaginatedListResponse<IReadAuthor>,
         next: INextFunction,
     ): Promise<void> {
         const authorRepository = this.authorRepositoryFactory.getInstance();
         try {
             const query = req.getQuery();
-            const authors = await authorRepository.findByQuery(query);
-            res.status(200).json(authors);
+            const page = query.page ? parseInt(query.page, 10) : undefined;
+            const pageSize = query.pageSize ? parseInt(query.pageSize, 10) : undefined;
+            const sort = query.sort;
+            const filter: IFilterAuthor = {
+                name__ilike: query.name__ilike,
+                birthDate__gte: query.birthDate__gte ? new Date(query.birthDate__gte) : undefined,
+                birthDate__lte: query.birthDate__lte ? new Date(query.birthDate__lte) : undefined,
+                books__title__ilike: query.books__title__ilike,
+            };
+            const total = await authorRepository.count(filter);
+            const authors = await authorRepository.find(filter, page, pageSize, sort);
+            const responseBody: IPaginatedListResponseBody<IReadAuthor> = {
+                data: authors,
+                total: total,
+                page: page || 1,
+                pageSize: authors.length,
+            };
+            res.status(200).json(responseBody);
         } catch (error: unknown) {
             await next.call(error as Error);
         }
