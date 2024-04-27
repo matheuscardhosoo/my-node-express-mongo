@@ -1,6 +1,6 @@
 import './validators';
 
-import AuthorModel, { IAuthorDocument } from '../models/author';
-import BookModel, { IBookDocument } from '../models/book';
+import AuthorModel, { AuthorFilterQuery, IAuthorDocument } from '../models/author';
+import BookModel, { BookFilterQuery, IBookDocument } from '../models/book';
 
-export { AuthorModel, IAuthorDocument, BookModel, IBookDocument };
+export { AuthorModel, IAuthorDocument, AuthorFilterQuery, BookModel, IBookDocument, BookFilterQuery };

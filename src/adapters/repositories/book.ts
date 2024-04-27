@@ -1,14 +1,14 @@
-import { AuthorModel, BookModel, IAuthorDocument, IBookDocument } from '../models/index';
+import { AuthorModel, BookFilterQuery, BookModel, IAuthorDocument, IBookDocument } from '../models/index';
 import { ClientSession, startSession } from 'mongoose';
+import { DataValidatorError, ResourceNotFoundError } from './errors';
 import {
     IBookAuthorObject,
     IBookRepository,
     ICreateBook,
-    IQueryBook,
+    IFilterBook,
     IReadBook,
     IUpdateBook,
 } from '../../domain/dependency_inversion/book';
-import { ResourceNotFoundError, ValidatorError } from './errors';
 
 import { IDatabaseErrorAdapter } from '../dependency_inversion/database';
 
@@ -37,19 +37,24 @@ export class BookRepository implements IBookRepository {
         }
     }
 
-    async findAll(): Promise<IReadBook[]> {
+    async count(query: IFilterBook): Promise<number> {
         try {
-            const documents = await BookModel.find({}).populate('authors').exec();
-            return documents.map((document: IBookDocument) => this.documentToBook(document));
+            const filterQuery = await this.prepareFilterQuery(query);
+            return await BookModel.countDocuments(filterQuery);
         } catch (error) {
             throw this.databaseErrorAdapter.adaptError(error as Error);
         }
     }
 
-    async findByQuery(query: IQueryBook): Promise<IReadBook[]> {
+    async find(query: IFilterBook, page: number = 1, pageSize: number = 20, sort: string = 'id'): Promise<IReadBook[]> {
         try {
-            const queryFilter = await this.prepareQueryFilter(query);
-            const documents = await BookModel.find(queryFilter).populate('authors').exec();
+            const filterQuery = await this.prepareFilterQuery(query);
+            const documents = await BookModel.find(filterQuery)
+                .skip((page - 1) * pageSize)
+                .limit(pageSize)
+                .sort(sort)
+                .populate('authors')
+                .exec();
             return documents.map((document: IBookDocument) => this.documentToBook(document));
         } catch (error) {
             throw this.databaseErrorAdapter.adaptError(error as Error);
@@ -167,7 +172,7 @@ export class BookRepository implements IBookRepository {
             (author: IBookAuthorObject) => author.id?.toString() as string,
         );
         if (hasDuplicates || authorsIds.length !== foundBookAuthorsIds.length) {
-            throw new ValidatorError({ ['author']: 'Authors list contains invalid ids' });
+            throw new DataValidatorError({ ['author']: 'Authors list contains invalid ids' });
         }
         return foundBookAuthors;
     }
@@ -218,21 +223,17 @@ export class BookRepository implements IBookRepository {
         };
     }
 
-    private async prepareQueryFilter(query: IQueryBook): Promise<Record<string, unknown>> {
-        const queryFilter: Record<string, unknown> = {};
-        if (query.title__ilike) queryFilter.title = { $regex: query.title__ilike, $options: 'i' };
-        if (query.numberOfPages__gte && query.numberOfPages__lte)
-            queryFilter.numberOfPages = { $gte: query.numberOfPages__gte, $lte: query.numberOfPages__lte };
-        else if (query.numberOfPages__gte) queryFilter.numberOfPages = { $gte: query.numberOfPages__gte };
-        else if (query.numberOfPages__lte) queryFilter.numberOfPages = { $lte: query.numberOfPages__lte };
+    private async prepareFilterQuery(query: IFilterBook): Promise<BookFilterQuery> {
+        const bookAuthorsIds: string[] = [];
         if (query.authors__name__ilike) {
-            const authorsIds = await AuthorModel.find(
-                { name: { $regex: query.authors__name__ilike, $options: 'i' } },
-                { _id: 1 },
-            ).distinct('_id');
-            queryFilter.authors = { $in: authorsIds };
+            bookAuthorsIds.push(
+                ...(await AuthorModel.find(
+                    { name: { $regex: query.authors__name__ilike, $options: 'i' } },
+                    { _id: 1 },
+                ).distinct('_id')),
+            );
         }
-        return queryFilter;
+        return new BookFilterQuery(query, bookAuthorsIds);
     }
 }
 

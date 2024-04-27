@@ -22,11 +22,13 @@ export interface ICreateAuthor extends IAuthorBase {
     books?: string[];
 }
 
-export interface IUpdateAuthor extends IAuthorBase {
+export interface IUpdateAuthor {
+    name?: string;
+    birthDate?: Date;
     books?: string[];
 }
 
-export interface IQueryAuthor extends Record<string, unknown> {
+export interface IFilterAuthor extends Record<string, unknown> {
     name__ilike?: string;
     birthDate__gte?: Date;
     birthDate__lte?: Date;
@@ -35,8 +37,8 @@ export interface IQueryAuthor extends Record<string, unknown> {
 
 export interface IAuthorRepository {
     create: (data: ICreateAuthor) => Promise<IReadAuthor>;
-    findAll: () => Promise<IReadAuthor[]>;
-    findByQuery: (query: IQueryAuthor) => Promise<IReadAuthor[]>;
+    count: (filter: IFilterAuthor) => Promise<number>;
+    find: (filter: IFilterAuthor, page?: number, pageSize?: number, sort?: string) => Promise<IReadAuthor[]>;
     findById: (id: string) => Promise<IReadAuthor>;
     replace: (id: string, data: ICreateAuthor) => Promise<IReadAuthor>;
     update: (id: string, data: IUpdateAuthor) => Promise<IReadAuthor>;

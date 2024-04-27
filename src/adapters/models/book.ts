@@ -1,5 +1,5 @@
-import { IBook, IBookPriceObject } from '../../domain/dependency_inversion/book';
-import mongoose, { Document, Schema } from 'mongoose';
+import { IBook, IBookPriceObject, IFilterBook } from '../../domain/dependency_inversion/book';
+import mongoose, { Document, FilterQuery, Schema } from 'mongoose';
 
 export interface IBookDocument extends Document<string, unknown, IBook> {
     title: string;
@@ -7,6 +7,30 @@ export interface IBookDocument extends Document<string, unknown, IBook> {
     price?: IBookPriceObject;
     numberOfPages?: number;
     authors?: string[];
+}
+
+export class BookFilterQuery implements FilterQuery<IBook> {
+    title?: { $regex: string; $options: string };
+
+    numberOfPages?: { $gte?: number; $lte?: number };
+
+    authors?: { $in: string[] };
+
+    constructor(filter: IFilterBook, bookAuthorsIds: string[] = []) {
+        if (filter.title__ilike) {
+            this.title = { $regex: filter.title__ilike, $options: 'i' };
+        }
+        if (filter.numberOfPages__gte && filter.numberOfPages__lte) {
+            this.numberOfPages = { $gte: filter.numberOfPages__gte, $lte: filter.numberOfPages__lte };
+        } else if (filter.numberOfPages__gte) {
+            this.numberOfPages = { $gte: filter.numberOfPages__gte };
+        } else if (filter.numberOfPages__lte) {
+            this.numberOfPages = { $lte: filter.numberOfPages__lte };
+        }
+        if (filter.authors__name__ilike) {
+            this.authors = { $in: bookAuthorsIds };
+        }
+    }
 }
 
 const bookPriceSchema = new Schema<IBookPriceObject>(
@@ -29,7 +53,7 @@ const bookPriceSchema = new Schema<IBookPriceObject>(
     { versionKey: false, _id: false },
 );
 
-export const bookSchema = new Schema<IBookDocument>(
+const bookSchema = new Schema<IBookDocument>(
     {
         title: {
             type: String,
