@@ -3,8 +3,6 @@ import {
     IAcessByIndexParams,
     ICreateRequest,
     IDeleteRequest,
-    IListRequest,
-    IListRequestQuery,
     INoResponse,
     IPaginatedListResponse,
     IPaginatedListResponseBody,
@@ -14,15 +12,23 @@ import {
     IUpdateRequest,
 } from './interfaces';
 import { ICreateAuthor, IFilterAuthor, IReadAuthor, IUpdateAuthor } from '../../domain/dependency_inversion/author';
-import { IHandler, INextFunction, IRouter } from '../dependency_inversion/api';
+import { IHandler, INextFunction, IRequest, IRequestQuery, IRouter } from '../dependency_inversion/api';
 
+import { PaginatedListRequestQuery } from './base/request_query';
 import { ResourceNotFoundError } from '../repositories/errors';
 
-interface IAuthorRequestQuery extends IListRequestQuery {
-    name__ilike?: string;
-    birthDate__gte?: string;
-    birthDate__lte?: string;
-    books__title__ilike?: string;
+class IAuthorRequestQuery extends PaginatedListRequestQuery {
+    filter: IFilterAuthor;
+
+    constructor(query: IRequestQuery) {
+        super(query);
+        this.filter = {
+            name__ilike: this.parseStringQuery(query, 'name__ilike'),
+            birthDate__gte: this.parseStringQuery(query, 'birthDate__gte', (value: string) => new Date(value)),
+            birthDate__lte: this.parseStringQuery(query, 'birthDate__lte', (value: string) => new Date(value)),
+            books__title__ilike: this.parseStringQuery(query, 'books__title__ilike'),
+        };
+    }
 }
 
 class AuthorController {
@@ -39,29 +45,16 @@ class AuthorController {
         router.delete('/authors/:id', this.delete.bind(this) as IHandler);
     }
 
-    public async list(
-        req: IListRequest<unknown, IAuthorRequestQuery>,
-        res: IPaginatedListResponse<IReadAuthor>,
-        next: INextFunction,
-    ): Promise<void> {
+    public async list(req: IRequest, res: IPaginatedListResponse<IReadAuthor>, next: INextFunction): Promise<void> {
         const authorRepository = this.authorRepositoryFactory.getInstance();
         try {
-            const query = req.getQuery();
-            const page = query.page ? parseInt(query.page, 10) : undefined;
-            const pageSize = query.pageSize ? parseInt(query.pageSize, 10) : undefined;
-            const sort = query.sort;
-            const filter: IFilterAuthor = {
-                name__ilike: query.name__ilike,
-                birthDate__gte: query.birthDate__gte ? new Date(query.birthDate__gte) : undefined,
-                birthDate__lte: query.birthDate__lte ? new Date(query.birthDate__lte) : undefined,
-                books__title__ilike: query.books__title__ilike,
-            };
-            const total = await authorRepository.count(filter);
-            const authors = await authorRepository.find(filter, page, pageSize, sort);
+            const query = new IAuthorRequestQuery(req.getQuery());
+            const total = await authorRepository.count(query.filter);
+            const authors = await authorRepository.find(query.filter, query.page, query.pageSize, query.sort);
             const responseBody: IPaginatedListResponseBody<IReadAuthor> = {
                 data: authors,
                 total: total,
-                page: page || 1,
+                page: query.page,
                 pageSize: authors.length,
             };
             res.status(200).json(responseBody);

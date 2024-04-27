@@ -2,8 +2,6 @@ import {
     IAcessByIndexParams,
     ICreateRequest,
     IDeleteRequest,
-    IListRequest,
-    IListRequestQuery,
     INoResponse,
     IPaginatedListResponse,
     IPaginatedListResponseBody,
@@ -13,16 +11,24 @@ import {
     IUpdateRequest,
 } from './interfaces';
 import { ICreateBook, IFilterBook, IReadBook, IUpdateBook } from '../../domain/dependency_inversion/book';
-import { IHandler, INextFunction, IRouter } from '../dependency_inversion/api';
+import { IHandler, INextFunction, IRequest, IRequestQuery, IRouter } from '../dependency_inversion/api';
 
 import { BookRepositoryFactory } from '../repositories/book';
+import { PaginatedListRequestQuery } from './base/request_query';
 import { ResourceNotFoundError } from '../repositories/errors';
 
-interface IBookRequestQuery extends IListRequestQuery {
-    title__ilike?: string;
-    numberOfPages__gte?: string;
-    numberOfPages__lte?: string;
-    authors__name__ilike?: string;
+class BookRequestQuery extends PaginatedListRequestQuery {
+    filter: IFilterBook;
+
+    constructor(query: IRequestQuery) {
+        super(query);
+        this.filter = {
+            title__ilike: this.parseStringQuery(query, 'title__ilike'),
+            numberOfPages__gte: this.parseStringQuery(query, 'numberOfPages__gte', parseInt),
+            numberOfPages__lte: this.parseStringQuery(query, 'numberOfPages__lte', parseInt),
+            authors__name__ilike: this.parseStringQuery(query, 'authors__name__ilike'),
+        };
+    }
 }
 
 class BookController {
@@ -39,29 +45,16 @@ class BookController {
         router.delete('/books/:id', this.delete.bind(this) as IHandler);
     }
 
-    public async list(
-        req: IListRequest<unknown, IBookRequestQuery>,
-        res: IPaginatedListResponse<IReadBook>,
-        next: INextFunction,
-    ): Promise<void> {
+    public async list(req: IRequest, res: IPaginatedListResponse<IReadBook>, next: INextFunction): Promise<void> {
         const bookRepository = this.bookRepositoryFactory.getInstance();
         try {
-            const query = req.getQuery();
-            const page = query.page ? parseInt(query.page, 10) : undefined;
-            const pageSize = query.pageSize ? parseInt(query.pageSize, 10) : undefined;
-            const sort = query.sort;
-            const filter: IFilterBook = {
-                title__ilike: query.title__ilike,
-                numberOfPages__gte: query.numberOfPages__gte ? parseInt(query.numberOfPages__gte) : undefined,
-                numberOfPages__lte: query.numberOfPages__lte ? parseInt(query.numberOfPages__lte) : undefined,
-                authors__name__ilike: query.authors__name__ilike,
-            };
-            const total = await bookRepository.count(filter);
-            const books = await bookRepository.find(filter, page, pageSize, sort);
+            const query = new BookRequestQuery(req.getQuery());
+            const total = await bookRepository.count(query.filter);
+            const books = await bookRepository.find(query.filter, query.page, query.pageSize, query.sort);
             const responseBody: IPaginatedListResponseBody<IReadBook> = {
                 data: books,
                 total: total,
-                page: page || 1,
+                page: query.page,
                 pageSize: books.length,
             };
             res.status(200).json(responseBody);

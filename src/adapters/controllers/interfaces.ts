@@ -1,15 +1,9 @@
-import { IRequest, IRequestQuery, IResponse } from '../dependency_inversion/api';
+import { IRequest, IResponse } from '../dependency_inversion/api';
 
 import { ParamsDictionary } from 'express-serve-static-core';
 
 export interface IAcessByIndexParams extends ParamsDictionary {
     [id: string]: string;
-}
-
-export interface IListRequestQuery extends IRequestQuery {
-    page?: string;
-    pageSize?: string;
-    sort?: string;
 }
 
 export interface IErrorResponseBody {
@@ -24,9 +18,6 @@ export interface IPaginatedListResponseBody<Body> {
     page: number;
     pageSize: number;
 }
-
-export interface IListRequest<RequestParams, ListRequestQuery>
-    extends IRequest<RequestParams, ListRequestQuery, unknown> {}
 
 export interface ICreateRequest<RequestParams, CreateBody> extends IRequest<RequestParams, unknown, CreateBody> {}
 
