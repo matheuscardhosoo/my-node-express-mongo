@@ -11,7 +11,7 @@ import {
     ISingleResponse,
     IUpdateRequest,
 } from './interfaces';
-import { ICreateAuthor, IReadAuthor, IUpdateAuthor } from '../../domain/dependency_inversion/author';
+import { ICreateAuthor, IQueryAuthor, IReadAuthor, IUpdateAuthor } from '../../domain/dependency_inversion/author';
 import { IHandler, INextFunction, IRouter } from '../dependency_inversion/api';
 
 import { ResourceNotFoundError } from '../repositories/errors';
@@ -31,13 +31,14 @@ class AuthorController {
     }
 
     public async list(
-        _req: IListRequest<unknown, unknown>,
+        req: IListRequest<unknown, IQueryAuthor>,
         res: IListResponse<IReadAuthor>,
         next: INextFunction,
     ): Promise<void> {
         const authorRepository = this.authorRepositoryFactory.getInstance();
         try {
-            const authors = await authorRepository.findAll();
+            const query = req.getQuery();
+            const authors = await authorRepository.findByQuery(query);
             res.status(200).json(authors);
         } catch (error: unknown) {
             await next.call(error as Error);

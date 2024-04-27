@@ -10,7 +10,7 @@ import {
     ISingleResponse,
     IUpdateRequest,
 } from './interfaces';
-import { ICreateBook, IReadBook, IUpdateBook } from '../../domain/dependency_inversion/book';
+import { ICreateBook, IQueryBook, IReadBook, IUpdateBook } from '../../domain/dependency_inversion/book';
 import { IHandler, INextFunction, IRouter } from '../dependency_inversion/api';
 
 import { BookRepositoryFactory } from '../repositories/book';
@@ -31,13 +31,14 @@ class BookController {
     }
 
     public async list(
-        _req: IListRequest<unknown, unknown>,
+        req: IListRequest<unknown, IQueryBook>,
         res: IListResponse<IReadBook>,
         next: INextFunction,
     ): Promise<void> {
         const bookRepository = this.bookRepositoryFactory.getInstance();
         try {
-            const books = await bookRepository.findAll();
+            const query = req.getQuery();
+            const books = await bookRepository.findByQuery(query);
             res.status(200).json(books);
         } catch (error: unknown) {
             await next.call(error as Error);

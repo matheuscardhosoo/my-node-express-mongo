@@ -4,6 +4,7 @@ import {
     IBookAuthorObject,
     IBookRepository,
     ICreateBook,
+    IQueryBook,
     IReadBook,
     IUpdateBook,
 } from '../../domain/dependency_inversion/book';
@@ -39,6 +40,16 @@ export class BookRepository implements IBookRepository {
     async findAll(): Promise<IReadBook[]> {
         try {
             const documents = await BookModel.find({}).populate('authors').exec();
+            return documents.map((document: IBookDocument) => this.documentToBook(document));
+        } catch (error) {
+            throw this.databaseErrorAdapter.adaptError(error as Error);
+        }
+    }
+
+    async findByQuery(query: IQueryBook): Promise<IReadBook[]> {
+        try {
+            const queryFilter = await this.prepareQueryFilter(query);
+            const documents = await BookModel.find(queryFilter).populate('authors').exec();
             return documents.map((document: IBookDocument) => this.documentToBook(document));
         } catch (error) {
             throw this.databaseErrorAdapter.adaptError(error as Error);
@@ -205,6 +216,23 @@ export class BookRepository implements IBookRepository {
             numberOfPages: document.numberOfPages,
             authors: authors,
         };
+    }
+
+    private async prepareQueryFilter(query: IQueryBook): Promise<Record<string, unknown>> {
+        const queryFilter: Record<string, unknown> = {};
+        if (query.title__ilike) queryFilter.title = { $regex: query.title__ilike, $options: 'i' };
+        if (query.numberOfPages__gte && query.numberOfPages__lte)
+            queryFilter.numberOfPages = { $gte: query.numberOfPages__gte, $lte: query.numberOfPages__lte };
+        else if (query.numberOfPages__gte) queryFilter.numberOfPages = { $gte: query.numberOfPages__gte };
+        else if (query.numberOfPages__lte) queryFilter.numberOfPages = { $lte: query.numberOfPages__lte };
+        if (query.authors__name__ilike) {
+            const authorsIds = await AuthorModel.find(
+                { name: { $regex: query.authors__name__ilike, $options: 'i' } },
+                { _id: 1 },
+            ).distinct('_id');
+            queryFilter.authors = { $in: authorsIds };
+        }
+        return queryFilter;
     }
 }
 

@@ -4,6 +4,7 @@ import {
     IAuthorBookObject,
     IAuthorRepository,
     ICreateAuthor,
+    IQueryAuthor,
     IReadAuthor,
     IUpdateAuthor,
 } from '../../domain/dependency_inversion/author';
@@ -39,6 +40,16 @@ export class AuthorRepository implements IAuthorRepository {
     async findAll(): Promise<IReadAuthor[]> {
         try {
             const documents = await AuthorModel.find({}).populate('books').exec();
+            return documents.map((document: IAuthorDocument) => this.documentToAuthor(document));
+        } catch (error) {
+            throw this.databaseErrorAdapter.adaptError(error as Error);
+        }
+    }
+
+    async findByQuery(query: IQueryAuthor): Promise<IReadAuthor[]> {
+        try {
+            const queryFilter = await this.prepareQueryFilter(query);
+            const documents = await AuthorModel.find(queryFilter).populate('books').exec();
             return documents.map((document: IAuthorDocument) => this.documentToAuthor(document));
         } catch (error) {
             throw this.databaseErrorAdapter.adaptError(error as Error);
@@ -197,6 +208,22 @@ export class AuthorRepository implements IAuthorRepository {
             birthDate: document.birthDate,
             books: books,
         };
+    }
+
+    private async prepareQueryFilter(query: IQueryAuthor): Promise<Record<string, unknown>> {
+        const queryFilter: Record<string, unknown> = {};
+        if (query.name__ilike) queryFilter.name = { $regex: new RegExp(query.name__ilike, 'i') };
+        if (query.birthDate__gte && query.birthDate__lte)
+            queryFilter.birthDate = { $gte: query.birthDate__gte, $lte: query.birthDate__lte };
+        else if (query.birthDate__gte) queryFilter.birthDate = { $gte: query.birthDate__gte };
+        else if (query.birthDate__lte) queryFilter.birthDate = { $lte: query.birthDate__lte };
+        if (query.books__title__ilike) {
+            const booksIds = await BookModel.find({
+                title: { $regex: new RegExp(query.books__title__ilike, 'i') },
+            }).distinct('_id');
+            queryFilter.books = { $in: booksIds };
+        }
+        return queryFilter;
     }
 }
 
