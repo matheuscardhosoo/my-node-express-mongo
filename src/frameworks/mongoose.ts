@@ -1,4 +1,4 @@
-import { RepositoryError, ValidatorError } from '../adapters/repositories/errors';
+import { DataValidatorError, RepositoryError } from '../adapters/repositories/errors';
 import mongoose, { ConnectOptions } from 'mongoose';
 
 import { DATABASE_SETTINGS } from '../settings';
@@ -37,7 +37,7 @@ class MongooseManager implements IDatabaseManager, IDatabaseErrorAdapter {
         return new RepositoryError(error.message);
     }
 
-    private adaptValidationError(error: mongoose.Error.ValidationError): ValidatorError {
+    private adaptValidationError(error: mongoose.Error.ValidationError): DataValidatorError {
         const errors: { [path: string]: string } = Object.keys(error.errors).reduce(
             (acc, key) => {
                 if (error.errors[key] instanceof mongoose.Error.ValidatorError) {
@@ -51,17 +51,17 @@ class MongooseManager implements IDatabaseManager, IDatabaseErrorAdapter {
             },
             {} as { [path: string]: string },
         );
-        return new ValidatorError(errors, error);
+        return new DataValidatorError(errors, error);
     }
 
-    private adaptValidatorError(error: mongoose.Error.ValidatorError): ValidatorError {
+    private adaptValidatorError(error: mongoose.Error.ValidatorError): DataValidatorError {
         const { path, message } = error;
-        return new ValidatorError({ [path]: message }, error);
+        return new DataValidatorError({ [path]: message }, error);
     }
 
-    private adaptCastError(error: mongoose.Error.CastError): ValidatorError {
+    private adaptCastError(error: mongoose.Error.CastError): DataValidatorError {
         const { path, kind } = error;
-        return new ValidatorError({ [path]: `Invalid ${kind}` }, error);
+        return new DataValidatorError({ [path]: `Invalid ${kind}` }, error);
     }
 }
 

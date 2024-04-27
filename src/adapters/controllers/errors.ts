@@ -1,7 +1,7 @@
 import { IAdaptersError } from '../errors';
 
-export class RepositoryError extends Error implements IAdaptersError {
-    public name = 'RepositoryError';
+export class ControllerError extends Error implements IAdaptersError {
+    public name = 'ControllerError';
 
     public prevStack?: Error;
 
@@ -13,7 +13,7 @@ export class RepositoryError extends Error implements IAdaptersError {
     }
 }
 
-export class DataValidatorError extends RepositoryError {
+export class RequestValidationError extends ControllerError {
     public name = 'ValidationError';
 
     public errors: { [path: string]: string };
@@ -24,16 +24,12 @@ export class DataValidatorError extends RepositoryError {
     }
 }
 
-export class ResourceNotFoundError extends RepositoryError {
+export class PathNotFoundError extends ControllerError {
     public name = 'NotFoundError';
 
-    public resourceName: string;
+    public resourceName: string = '';
 
-    public id?: string;
-
-    constructor(resourceName: string, id?: string, prevStack?: Error) {
-        super(`Resource not found: ${resourceName}`, prevStack);
-        this.resourceName = resourceName;
-        this.id = id;
+    constructor(prevStack?: Error) {
+        super('Path not found', prevStack);
     }
 }

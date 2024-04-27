@@ -22,7 +22,9 @@ export interface ICreateAuthor extends IAuthorBase {
     books?: string[];
 }
 
-export interface IUpdateAuthor extends IAuthorBase {
+export interface IUpdateAuthor {
+    name?: string;
+    birthDate?: Date;
     books?: string[];
 }
 

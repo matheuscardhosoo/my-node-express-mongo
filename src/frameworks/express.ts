@@ -8,6 +8,7 @@ import {
     IRequestParams,
     IRequestQuery,
     IResponse,
+    IResponseBody,
     IRouter,
 } from '../adapters/dependency_inversion/api';
 import express, { Express, NextFunction, Request, Response } from 'express';
@@ -37,19 +38,19 @@ class ExpressRequest implements IRequest {
     }
 }
 
-class ExpressResponse implements IResponse {
+class ExpressResponse implements IResponse<IResponseBody> {
     private response: Response;
 
     constructor(response: Response) {
         this.response = response;
     }
 
-    public status(status: number): IResponse {
+    public status(status: number): ExpressResponse {
         this.response.status(status);
         return this;
     }
 
-    public json(body: IRequestBody): void {
+    public json(body: IResponseBody): void {
         this.response.json(body);
     }
 

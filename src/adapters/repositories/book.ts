@@ -1,5 +1,6 @@
 import { AuthorModel, BookFilterQuery, BookModel, IAuthorDocument, IBookDocument } from '../models/index';
 import { ClientSession, startSession } from 'mongoose';
+import { DataValidatorError, ResourceNotFoundError } from './errors';
 import {
     IBookAuthorObject,
     IBookRepository,
@@ -8,7 +9,6 @@ import {
     IReadBook,
     IUpdateBook,
 } from '../../domain/dependency_inversion/book';
-import { ResourceNotFoundError, ValidatorError } from './errors';
 
 import { IDatabaseErrorAdapter } from '../dependency_inversion/database';
 
@@ -172,7 +172,7 @@ export class BookRepository implements IBookRepository {
             (author: IBookAuthorObject) => author.id?.toString() as string,
         );
         if (hasDuplicates || authorsIds.length !== foundBookAuthorsIds.length) {
-            throw new ValidatorError({ ['author']: 'Authors list contains invalid ids' });
+            throw new DataValidatorError({ ['author']: 'Authors list contains invalid ids' });
         }
         return foundBookAuthors;
     }

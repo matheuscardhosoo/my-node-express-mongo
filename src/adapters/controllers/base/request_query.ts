@@ -1,4 +1,5 @@
 import { IRequestQuery } from '../../dependency_inversion/api';
+import { RequestValidationError } from '../errors';
 
 export class BaseRequestQuery {
     protected parseStringQuery<T = string>(
@@ -9,18 +10,18 @@ export class BaseRequestQuery {
         if (key in query) {
             const value = query[key];
             if (typeof value === 'string') return parseFunction(value);
-            throw new Error(`Query parameter ${key} is invalid`);
+            throw new RequestValidationError({ [key]: 'Query parameter should be a string' });
         }
         return undefined;
     }
 }
 
 export class PaginatedListRequestQuery extends BaseRequestQuery {
-    page: number;
+    readonly page: number;
 
-    pageSize: number;
+    readonly pageSize: number;
 
-    sort: string;
+    readonly sort: string;
 
     constructor(query: IRequestQuery) {
         super();
@@ -30,8 +31,10 @@ export class PaginatedListRequestQuery extends BaseRequestQuery {
     }
 
     private validate(): void {
-        if (this.page < 1) throw new Error('Query parameter page should be greater than 0');
-        if (this.pageSize < 1) throw new Error('Query parameter pageSize should be greater than 0');
-        if (this.pageSize > 100) throw new Error('Query parameter pageSize should be less than 100');
+        if (this.page < 1) throw new RequestValidationError({ page: 'Query parameter page should be greater than 0' });
+        if (this.pageSize < 1)
+            throw new RequestValidationError({ pageSize: 'Query parameter pageSize should be greater than 0' });
+        if (this.pageSize > 100)
+            throw new RequestValidationError({ pageSize: 'Query parameter pageSize should be less than 100' });
     }
 }

@@ -1,5 +1,6 @@
 import { AuthorFilterQuery, AuthorModel, BookModel, IAuthorDocument, IBookDocument } from '../models/index';
 import { ClientSession, startSession } from 'mongoose';
+import { DataValidatorError, ResourceNotFoundError } from './errors';
 import {
     IAuthorBookObject,
     IAuthorRepository,
@@ -8,7 +9,6 @@ import {
     IReadAuthor,
     IUpdateAuthor,
 } from '../../domain/dependency_inversion/author';
-import { ResourceNotFoundError, ValidatorError } from './errors';
 
 import { IDatabaseErrorAdapter } from '../dependency_inversion/database';
 
@@ -171,7 +171,7 @@ export class AuthorRepository implements IAuthorRepository {
         const foundAuthorBooks = await this.findAuthorBooks(booksIds, session);
         const foundAuthorBooksIds = foundAuthorBooks.map((book: IAuthorBookObject) => book.id?.toString() as string);
         if (hasDuplicates || booksIds.length !== foundAuthorBooksIds.length) {
-            throw new ValidatorError({ ['books']: 'Books list contains invalid ids' });
+            throw new DataValidatorError({ ['books']: 'Books list contains invalid ids' });
         }
         return foundAuthorBooks;
     }

@@ -3,7 +3,7 @@ export interface IRequestParams extends Record<string, string> {}
 export interface IRequestQuery
     extends Record<string, undefined | string | string[] | IRequestQuery | IRequestQuery[]> {}
 
-export interface IRequestBody {}
+export interface IRequestBody extends Record<string, unknown> {}
 
 export interface ILocals extends Record<string, unknown> {}
 
@@ -15,9 +15,9 @@ export interface IRequest<RequestParams = IRequestParams, RequestQuery = IReques
     getBody: () => RequestBody;
 }
 
-export interface IResponse<RequestBody = IResponseBody, Locals = ILocals> {
-    status: (status: number) => IResponse<RequestBody, Locals>;
-    json: (body: RequestBody) => void;
+export interface IResponse<ResponseBody = IResponseBody, Locals = ILocals> {
+    status: (status: number) => IResponse<ResponseBody, Locals>;
+    json: (body: ResponseBody) => void;
     send: () => void;
     getLocal: (key: string) => unknown;
     setLocal: (key: string, value: unknown) => void;

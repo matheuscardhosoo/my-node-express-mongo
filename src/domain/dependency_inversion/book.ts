@@ -29,7 +29,11 @@ export interface ICreateBook extends IBookBase {
     authors?: string[];
 }
 
-export interface IUpdateBook extends IBookBase {
+export interface IUpdateBook {
+    title?: string;
+    description?: string;
+    price?: IBookPriceObject;
+    numberOfPages?: number;
     authors?: string[];
 }
 

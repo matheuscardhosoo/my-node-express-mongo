@@ -1,10 +1,11 @@
 import { INextFunction, IRequest, IResponse } from '../dependency_inversion/api';
-import { ResourceNotFoundError, ValidatorError } from '../repositories/errors';
 
+import { IAdaptersError } from '../errors';
 import { IErrorResponseBody } from './interfaces';
+import { PathNotFoundError } from './errors';
 
 export const PathNotFoundHandler = (_req: IRequest, _res: IResponse, next: INextFunction): Promise<void> => {
-    const error = new ResourceNotFoundError('path');
+    const error = new PathNotFoundError();
     return next.call(error);
 };
 
@@ -14,13 +15,13 @@ export const AdaptersErrorHandler = (
     res: IResponse,
     _next: INextFunction,
 ): Promise<void> => {
-    if (error.name === 'ValidatorError') {
+    if (error.name === 'ValidationError') {
         res.status(400).json({
             status: 400,
             message: error.message,
-            errors: (error as ValidatorError).errors,
+            errors: (error as unknown as IAdaptersError).errors,
         } as IErrorResponseBody);
-    } else if (error.name === 'ResourceNotFoundError') {
+    } else if (error.name === 'NotFoundError') {
         res.status(404).json({ status: 404, message: error.message } as IErrorResponseBody);
     } else {
         console.error(error);
